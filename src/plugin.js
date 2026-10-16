@@ -3,14 +3,205 @@
 
 // AniList Custom Ratings for Seanime
 //
-// Adds a "Bewerten" button to anime and manga pages (and the media card context menu) that
-// opens a rating window with your AniList Advanced Scoring categories (e.g. Story, Characters,
-// Visuals, Audio, Enjoyment). The overall score is the average of the rated categories, like on
-// AniList. A second button, "Custom Lists", lets you assign the entry to your custom lists.
-// Everything is saved directly to AniList.
+// Adds a "Rate" button to anime and manga pages (and the media card context menu) that opens a
+// rating window with your AniList Advanced Scoring categories (e.g. Story, Characters, Visuals).
+// Existing category scores are loaded from AniList, arrow keys step by 1, 0.5 or 0.1, and the
+// overall score is the average of the rated categories, like on AniList. A second button,
+// "Custom Lists", assigns the entry to your custom lists. Everything is saved directly to AniList.
+//
+// UI language: German, English, Spanish, Portuguese, Japanese (plugin setting "language").
 
 function init() {
     $ui.register((ctx) => {
+
+        // -----------------------------------------------------------------------------------------
+        // Translations
+
+        const I18N = {
+            en: {
+                anime: "anime", manga: "manga",
+                rate: "Rate", lists: "Custom Lists",
+                rateMenu: "Rate (categories)", listsMenu: "Custom Lists",
+                ratingTitle: "Rate: {0}", listsTitle: "Custom Lists: {0}",
+                loading: "Loading your settings from AniList…",
+                error: "Error",
+                notOnList: "This {0} is not on your list yet. Saving will add it as \"Planning\".",
+                noCategoriesTitle: "No categories set up",
+                noCategoriesDesc: "On anilist.co go to Settings → Lists, enable \"Advanced Scoring\" for your {0} list and add your categories. They will show up here afterwards.",
+                current: "Currently on AniList: {0} / {1}",
+                total: "Overall (average): {0} / {1}",
+                totalInvalid: "Overall: please only enter numbers from 0 to {0}",
+                step: "Arrow key step",
+                stepHint: "Steps of 0.5 and 0.1 need the \"10 Point Decimal\" scoring system on AniList.",
+                cancel: "Cancel", save: "Save",
+                savedScore: "Rating saved: {0}",
+                saveFailed: "Saving failed: {0}",
+                enterNumber: "\"{0}\": please enter a number from 0 to {1}.",
+                notLoggedIn: "You are not logged in to AniList in Seanime.",
+                accountFailed: "Could not load your AniList account.",
+                unknownError: "Unknown error",
+                noLists: "You have no {0} custom lists yet. Create one below.",
+                hideStatus: "Hide from status lists (only show in custom lists)",
+                newListPh: "New {0} custom list…",
+                create: "Create",
+                listExists: "The list \"{0}\" already exists.",
+                listCreated: "List \"{0}\" created and selected. Click Save to apply.",
+                listCreateFailed: "Could not create the list: {0}",
+                savedLists: "Saved: {0}",
+                savedNoLists: "Saved: in no custom list",
+            },
+            de: {
+                anime: "Anime", manga: "Manga",
+                rate: "Bewerten", lists: "Custom Lists",
+                rateMenu: "Bewerten (Kategorien)", listsMenu: "Custom Lists",
+                ratingTitle: "Bewerten: {0}", listsTitle: "Custom Lists: {0}",
+                loading: "Lade deine Einstellungen von AniList…",
+                error: "Fehler",
+                notOnList: "Dieser {0} ist noch nicht auf deiner Liste. Beim Speichern wird er als \"Planning\" hinzugefügt.",
+                noCategoriesTitle: "Keine Kategorien eingerichtet",
+                noCategoriesDesc: "Aktiviere auf anilist.co unter Settings → Lists das \"Advanced Scoring\" für deine {0}-Liste und lege dort deine Kategorien an. Danach erscheinen sie hier.",
+                current: "Aktuell auf AniList: {0} / {1}",
+                total: "Gesamt (Durchschnitt): {0} / {1}",
+                totalInvalid: "Gesamt: bitte nur Zahlen von 0 bis {0} eingeben",
+                step: "Schritt mit Pfeiltasten",
+                stepHint: "Schritte von 0,5 und 0,1 gehen nur mit dem Bewertungssystem \"10 Point Decimal\" auf AniList.",
+                cancel: "Abbrechen", save: "Speichern",
+                savedScore: "Bewertung gespeichert: {0}",
+                saveFailed: "Speichern fehlgeschlagen: {0}",
+                enterNumber: "\"{0}\": bitte eine Zahl von 0 bis {1} eingeben.",
+                notLoggedIn: "Du bist in Seanime nicht bei AniList angemeldet.",
+                accountFailed: "AniList-Konto konnte nicht geladen werden.",
+                unknownError: "Unbekannter Fehler",
+                noLists: "Du hast noch keine {0} Custom Lists. Leg unten eine an.",
+                hideStatus: "In den Status-Listen ausblenden (nur in Custom Lists zeigen)",
+                newListPh: "Neue {0} Custom List…",
+                create: "Anlegen",
+                listExists: "Die Liste \"{0}\" gibt es schon.",
+                listCreated: "Liste \"{0}\" angelegt und ausgewählt. Zum Übernehmen auf Speichern klicken.",
+                listCreateFailed: "Liste konnte nicht angelegt werden: {0}",
+                savedLists: "Gespeichert: {0}",
+                savedNoLists: "Gespeichert: in keiner Custom List",
+            },
+            es: {
+                anime: "anime", manga: "manga",
+                rate: "Calificar", lists: "Listas personalizadas",
+                rateMenu: "Calificar (categorías)", listsMenu: "Listas personalizadas",
+                ratingTitle: "Calificar: {0}", listsTitle: "Listas personalizadas: {0}",
+                loading: "Cargando tus ajustes de AniList…",
+                error: "Error",
+                notOnList: "Este {0} aún no está en tu lista. Al guardar se añadirá como \"Planning\".",
+                noCategoriesTitle: "No hay categorías configuradas",
+                noCategoriesDesc: "En anilist.co ve a Settings → Lists, activa \"Advanced Scoring\" para tu lista de {0} y añade tus categorías. Después aparecerán aquí.",
+                current: "Actualmente en AniList: {0} / {1}",
+                total: "Total (promedio): {0} / {1}",
+                totalInvalid: "Total: introduce solo números del 0 al {0}",
+                step: "Paso con las flechas",
+                stepHint: "Los pasos de 0,5 y 0,1 requieren el sistema de puntuación \"10 Point Decimal\" en AniList.",
+                cancel: "Cancelar", save: "Guardar",
+                savedScore: "Calificación guardada: {0}",
+                saveFailed: "No se pudo guardar: {0}",
+                enterNumber: "\"{0}\": introduce un número del 0 al {1}.",
+                notLoggedIn: "No has iniciado sesión en AniList en Seanime.",
+                accountFailed: "No se pudo cargar tu cuenta de AniList.",
+                unknownError: "Error desconocido",
+                noLists: "Aún no tienes listas personalizadas de {0}. Crea una abajo.",
+                hideStatus: "Ocultar de las listas de estado (mostrar solo en listas personalizadas)",
+                newListPh: "Nueva lista personalizada de {0}…",
+                create: "Crear",
+                listExists: "La lista \"{0}\" ya existe.",
+                listCreated: "Lista \"{0}\" creada y seleccionada. Pulsa Guardar para aplicar.",
+                listCreateFailed: "No se pudo crear la lista: {0}",
+                savedLists: "Guardado: {0}",
+                savedNoLists: "Guardado: en ninguna lista personalizada",
+            },
+            pt: {
+                anime: "anime", manga: "mangá",
+                rate: "Avaliar", lists: "Listas personalizadas",
+                rateMenu: "Avaliar (categorias)", listsMenu: "Listas personalizadas",
+                ratingTitle: "Avaliar: {0}", listsTitle: "Listas personalizadas: {0}",
+                loading: "Carregando suas configurações do AniList…",
+                error: "Erro",
+                notOnList: "Este {0} ainda não está na sua lista. Ao salvar, ele será adicionado como \"Planning\".",
+                noCategoriesTitle: "Nenhuma categoria configurada",
+                noCategoriesDesc: "No anilist.co, vá em Settings → Lists, ative o \"Advanced Scoring\" para a sua lista de {0} e adicione suas categorias. Depois elas aparecerão aqui.",
+                current: "Atualmente no AniList: {0} / {1}",
+                total: "Total (média): {0} / {1}",
+                totalInvalid: "Total: digite apenas números de 0 a {0}",
+                step: "Passo com as setas",
+                stepHint: "Passos de 0,5 e 0,1 exigem o sistema de notas \"10 Point Decimal\" no AniList.",
+                cancel: "Cancelar", save: "Salvar",
+                savedScore: "Avaliação salva: {0}",
+                saveFailed: "Falha ao salvar: {0}",
+                enterNumber: "\"{0}\": digite um número de 0 a {1}.",
+                notLoggedIn: "Você não está conectado ao AniList no Seanime.",
+                accountFailed: "Não foi possível carregar sua conta do AniList.",
+                unknownError: "Erro desconhecido",
+                noLists: "Você ainda não tem listas personalizadas de {0}. Crie uma abaixo.",
+                hideStatus: "Ocultar das listas de status (mostrar só nas listas personalizadas)",
+                newListPh: "Nova lista personalizada de {0}…",
+                create: "Criar",
+                listExists: "A lista \"{0}\" já existe.",
+                listCreated: "Lista \"{0}\" criada e selecionada. Clique em Salvar para aplicar.",
+                listCreateFailed: "Não foi possível criar a lista: {0}",
+                savedLists: "Salvo: {0}",
+                savedNoLists: "Salvo: em nenhuma lista personalizada",
+            },
+            ja: {
+                anime: "アニメ", manga: "マンガ",
+                rate: "評価する", lists: "カスタムリスト",
+                rateMenu: "評価する（カテゴリー）", listsMenu: "カスタムリスト",
+                ratingTitle: "評価：{0}", listsTitle: "カスタムリスト：{0}",
+                loading: "AniListから設定を読み込んでいます…",
+                error: "エラー",
+                notOnList: "この{0}はまだリストにありません。保存すると「Planning」として追加されます。",
+                noCategoriesTitle: "カテゴリーが設定されていません",
+                noCategoriesDesc: "anilist.co の Settings → Lists で{0}リストの「Advanced Scoring」を有効にし、カテゴリーを追加してください。追加後、ここに表示されます。",
+                current: "現在のAniListのスコア：{0} / {1}",
+                total: "総合（平均）：{0} / {1}",
+                totalInvalid: "総合：0〜{0}の数字のみ入力してください",
+                step: "矢印キーの刻み",
+                stepHint: "0.5と0.1の刻みは、AniListの採点方式が「10 Point Decimal」の場合のみ使えます。",
+                cancel: "キャンセル", save: "保存",
+                savedScore: "評価を保存しました：{0}",
+                saveFailed: "保存に失敗しました：{0}",
+                enterNumber: "「{0}」：0〜{1}の数字を入力してください。",
+                notLoggedIn: "SeanimeでAniListにログインしていません。",
+                accountFailed: "AniListアカウントを読み込めませんでした。",
+                unknownError: "不明なエラー",
+                noLists: "{0}のカスタムリストはまだありません。下で作成できます。",
+                hideStatus: "ステータスリストから非表示にする（カスタムリストのみに表示）",
+                newListPh: "新しい{0}カスタムリスト…",
+                create: "作成",
+                listExists: "リスト「{0}」はすでに存在します。",
+                listCreated: "リスト「{0}」を作成して選択しました。保存を押すと反映されます。",
+                listCreateFailed: "リストを作成できませんでした：{0}",
+                savedLists: "保存しました：{0}",
+                savedNoLists: "保存しました：カスタムリストなし",
+            },
+        }
+
+        function pref(key, fallback) {
+            try {
+                const v = $getUserPreference(key)
+                return v ? String(v) : fallback
+            }
+            catch (e) {
+                return fallback
+            }
+        }
+
+        const LANG = I18N[pref("language", "en")] ? pref("language", "en") : "en"
+
+        function t(key) {
+            let str = (I18N[LANG] && I18N[LANG][key]) || I18N.en[key] || key
+            for (let i = 1; i < arguments.length; i++) {
+                str = str.split("{" + (i - 1) + "}").join(String(arguments[i]))
+            }
+            return str
+        }
+
+        // -----------------------------------------------------------------------------------------
+        // GraphQL
 
         const QUERY_VIEWER = `query {
   Viewer {
@@ -31,6 +222,13 @@ function init() {
     advancedScores
     hiddenFromStatusLists
     customLists(asArray: true)
+  }
+}`
+
+        // Recent entries, used to find out on which scale AniList stored your category scores
+        const QUERY_RECENT_SCORES = `query ($userId: Int, $type: MediaType) {
+  Page(perPage: 50) {
+    mediaList(userId: $userId, type: $type, sort: UPDATED_TIME_DESC) { advancedScores }
   }
 }`
 
@@ -60,13 +258,23 @@ function init() {
   UpdateUser(mangaListOptions: { customLists: $lists }) { id }
 }`
 
-        // Score formats that support advanced scoring on AniList, with their range
+        // -----------------------------------------------------------------------------------------
+        // Score scales
+
         const SCALES = {
-            POINT_100: { max: 100, decimals: 0, label: "0–100" },
-            POINT_10_DECIMAL: { max: 10, decimals: 1, label: "0–10" },
+            POINT_100: { max: 100, decimals: 0, steps: ["1", "5", "10"] },
+            POINT_10_DECIMAL: { max: 10, decimals: 1, steps: ["1", "0.5", "0.1"] },
+            POINT_10: { max: 10, decimals: 0, steps: ["1"] },
+            POINT_5: { max: 5, decimals: 0, steps: ["1"] },
+            POINT_3: { max: 3, decimals: 0, steps: ["1"] },
         }
 
-        // Current modal state
+        // Max number of rating categories shown (one field reference each)
+        const MAX_CATEGORIES = 20
+
+        // -----------------------------------------------------------------------------------------
+        // State
+
         const s = {
             mode: "rating",     // "rating" | "lists"
             media: null,        // { id, title, type: "ANIME" | "MANGA" }
@@ -76,8 +284,8 @@ function init() {
             userId: 0,
             scoreFormat: "",
             categories: [],     // advanced scoring categories for this media type
-            advancedEnabled: false,
-            scores: {},         // category -> string typed by the user
+            storedFactor: 1,    // stored category value = displayed value * storedFactor
+            step: pref("step", "1"),
             lists: [],          // custom list names for this media type
             selected: {},       // list name -> boolean
             hidden: false,      // hiddenFromStatusLists
@@ -88,7 +296,20 @@ function init() {
 
         const modal = ctx.newModal({ title: "AniList" })
 
-        // ---------------------------------------------------------------------------------------------
+        // Category score fields. Field references keep the typed values in sync with the client,
+        // and let the +/- buttons change the value shown in the input.
+        const scoreRefs = []
+        for (let i = 0; i < MAX_CATEGORIES; i++) {
+            const ref = ctx.fieldRef("")
+            ref.onValueChange(() => modal.update())
+            scoreRefs.push(ref)
+        }
+
+        // Scale detection per media type, cached for the session
+        const factorCache = {}
+
+        // -----------------------------------------------------------------------------------------
+        // Helpers
 
         function plain(v) {
             // Convert Go values into plain JS objects/arrays
@@ -106,23 +327,27 @@ function init() {
 
         function query(body) {
             const token = getToken()
-            if (!token) throw new Error("Du bist in Seanime nicht bei AniList angemeldet.")
+            if (!token) throw new Error(t("notLoggedIn"))
             return plain($anilist.customQuery(body, token))
         }
 
         function errMsg(e) {
-            if (!e) return "Unbekannter Fehler"
+            if (!e) return t("unknownError")
             if (typeof e === "string") return e
             return e.message || String(e)
         }
 
         function titleOf(media) {
-            const t = (media && media.title) || {}
-            return t.userPreferred || t.english || t.romaji || t.native || ("#" + (media && media.id))
+            const ti = (media && media.title) || {}
+            return ti.userPreferred || ti.english || ti.romaji || ti.native || ("#" + (media && media.id))
+        }
+
+        function kindOf(type) {
+            return type === "MANGA" ? t("manga") : t("anime")
         }
 
         function scale() {
-            return SCALES[s.scoreFormat] || null
+            return SCALES[s.scoreFormat] || SCALES.POINT_100
         }
 
         function round(n, decimals) {
@@ -131,27 +356,35 @@ function init() {
         }
 
         function formatNum(n) {
-            const sc = scale()
-            return sc ? String(round(n, sc.decimals)) : String(n)
+            return String(round(n, scale().decimals))
+        }
+
+        function validStep() {
+            const steps = scale().steps
+            return steps.indexOf(s.step) !== -1 ? s.step : steps[0]
         }
 
         // Parses a typed score; returns null when the input is invalid
         function parseScore(str) {
             const sc = scale()
-            const t = String(str === undefined || str === null ? "" : str).trim().replace(",", ".")
-            if (t === "") return 0
-            if (!/^\d+(\.\d+)?$/.test(t)) return null
-            const n = parseFloat(t)
-            if (!sc || n < 0 || n > sc.max) return null
+            const v = String(str === undefined || str === null ? "" : str).trim().replace(",", ".")
+            if (v === "") return 0
+            if (!/^\d+(\.\d+)?$/.test(v) && !/^\.\d+$/.test(v)) return null
+            const n = parseFloat(v)
+            if (isNaN(n) || n < 0 || n > sc.max) return null
             return round(n, sc.decimals)
+        }
+
+        function categoryValue(i) {
+            const v = scoreRefs[i].current
+            return v === undefined || v === null ? "" : String(v)
         }
 
         // Average of all rated (non-zero) categories, like AniList does
         function average() {
-            const sc = scale()
             let sum = 0, count = 0
             for (let i = 0; i < s.categories.length; i++) {
-                const n = parseScore(s.scores[s.categories[i]])
+                const n = parseScore(categoryValue(i))
                 if (n === null) return null
                 if (n > 0) {
                     sum += n
@@ -159,7 +392,43 @@ function init() {
                 }
             }
             if (!count) return 0
-            return round(sum / count, sc ? sc.decimals : 1)
+            return round(sum / count, scale().decimals)
+        }
+
+        function numbersOf(adv) {
+            const out = []
+            if (!adv || typeof adv !== "object") return out
+            for (const k in adv) {
+                const n = Number(adv[k])
+                if (!isNaN(n)) out.push(n)
+            }
+            return out
+        }
+
+        // AniList stores category scores as 0–100 values. Depending on how they were saved they can
+        // also be on your score format's scale. We look at your existing scores to find out.
+        function detectStoredFactor(entryAdv) {
+            const sc = scale()
+            if (sc.max >= 100) return 1
+            const cacheKey = s.media.type + ":" + s.scoreFormat
+            let values = numbersOf(entryAdv).filter((n) => n > 0)
+            if (!values.length) {
+                if (factorCache[cacheKey]) return factorCache[cacheKey]
+                try {
+                    const res = query({ query: QUERY_RECENT_SCORES, variables: { userId: s.userId, type: s.media.type } })
+                    const entries = (res && res.Page && res.Page.mediaList) || []
+                    for (let i = 0; i < entries.length; i++) {
+                        values = values.concat(numbersOf(entries[i].advancedScores).filter((n) => n > 0))
+                    }
+                }
+                catch (e) {
+                    console.warn("anilist-custom-ratings: could not detect score scale", e)
+                }
+            }
+            let factor = 1
+            if (values.length && values.some((n) => n > sc.max)) factor = 100 / sc.max
+            if (values.length) factorCache[cacheKey] = factor
+            return factor
         }
 
         function parseEntryCustomLists(raw) {
@@ -186,7 +455,57 @@ function init() {
             }
         }
 
-        // ---------------------------------------------------------------------------------------------
+        // -----------------------------------------------------------------------------------------
+        // Arrow key stepping: turn the score fields into number inputs with the chosen step
+
+        function applyInputAttributes(elements) {
+            const sc = scale()
+            const step = validStep()
+            for (let i = 0; i < elements.length; i++) {
+                const el = elements[i]
+                try {
+                    el.setAttribute("type", "number")
+                    el.setAttribute("inputmode", "decimal")
+                    el.setAttribute("min", "0")
+                    el.setAttribute("max", String(sc.max))
+                    el.setAttribute("step", step)
+                }
+                catch (e) {
+                    console.warn("anilist-custom-ratings: could not set input attributes", e)
+                }
+            }
+        }
+
+        let refetchInputs = null
+        ctx.dom.onReady(() => {
+            const observer = ctx.dom.observe(".acr-score input", (elements) => applyInputAttributes(elements))
+            refetchInputs = observer && observer[1]
+        })
+
+        function reapplyStep() {
+            if (refetchInputs) {
+                try {
+                    refetchInputs()
+                }
+                catch (e) {
+                    // ignore
+                }
+            }
+        }
+
+        function nudge(i, direction) {
+            const sc = scale()
+            const step = parseFloat(validStep())
+            const current = parseScore(categoryValue(i)) || 0
+            let next = round(current + direction * step, sc.decimals)
+            if (next < 0) next = 0
+            if (next > sc.max) next = sc.max
+            scoreRefs[i].setValue(next ? formatNum(next) : "")
+            modal.update()
+        }
+
+        // -----------------------------------------------------------------------------------------
+        // Loading and saving
 
         function load() {
             s.loading = true
@@ -194,38 +513,50 @@ function init() {
             modal.update()
             try {
                 const viewer = (query({ query: QUERY_VIEWER }) || {}).Viewer
-                if (!viewer) throw new Error("AniList-Konto konnte nicht geladen werden.")
+                if (!viewer) throw new Error(t("accountFailed"))
                 s.userId = viewer.id
                 const opts = viewer.mediaListOptions || {}
                 const listOpts = (s.media.type === "MANGA" ? opts.mangaList : opts.animeList) || {}
-                s.scoreFormat = opts.scoreFormat || ""
-                s.categories = (listOpts.advancedScoring || []).filter((n) => !!n)
-                s.advancedEnabled = !!listOpts.advancedScoringEnabled
+                s.scoreFormat = opts.scoreFormat || "POINT_100"
+                s.categories = (listOpts.advancedScoring || []).filter((n) => !!n).slice(0, MAX_CATEGORIES)
                 s.lists = (listOpts.customLists || []).filter((n) => !!n)
 
-                s.scores = {}
                 s.selected = {}
                 s.hidden = false
                 s.entryExists = false
                 s.entryScore = 0
+                let adv = null
                 try {
                     const res = query({ query: QUERY_ENTRY, variables: { mediaId: s.media.id, userId: s.userId } })
                     const entry = res && res.MediaList
                     if (entry) {
                         s.entryExists = true
-                        s.entryScore = entry.score || 0
+                        s.entryScore = Number(entry.score) || 0
                         s.hidden = !!entry.hiddenFromStatusLists
                         s.selected = parseEntryCustomLists(entry.customLists)
-                        const adv = entry.advancedScores || {}
-                        for (let i = 0; i < s.categories.length; i++) {
-                            const v = adv[s.categories[i]]
-                            s.scores[s.categories[i]] = v ? formatNum(v) : ""
+                        adv = entry.advancedScores
+                        if (typeof adv === "string") {
+                            try {
+                                adv = JSON.parse(adv)
+                            }
+                            catch (e) {
+                                adv = null
+                            }
                         }
                     }
                 }
                 catch (e) {
                     // AniList answers with "Not Found." when the media is not on the user's list
                     if (!/not found/i.test(errMsg(e))) throw e
+                }
+
+                if (s.mode === "rating") {
+                    s.storedFactor = detectStoredFactor(adv)
+                    for (let i = 0; i < s.categories.length; i++) {
+                        const raw = adv ? Number(adv[s.categories[i]]) : 0
+                        const shown = raw ? raw / s.storedFactor : 0
+                        scoreRefs[i].setValue(shown ? formatNum(shown) : "")
+                    }
                 }
             }
             catch (e) {
@@ -239,12 +570,12 @@ function init() {
             if (s.saving) return
             const advancedScores = []
             for (let i = 0; i < s.categories.length; i++) {
-                const n = parseScore(s.scores[s.categories[i]])
+                const n = parseScore(categoryValue(i))
                 if (n === null) {
-                    ctx.toast.warning("\"" + s.categories[i] + "\": bitte eine Zahl von 0 bis " + scale().max + " eingeben.")
+                    ctx.toast.warning(t("enterNumber", s.categories[i], scale().max))
                     return
                 }
-                advancedScores.push(n)
+                advancedScores.push(round(n * s.storedFactor, 1))
             }
             const score = average()
 
@@ -258,15 +589,15 @@ function init() {
                 const entry = res && res.SaveMediaListEntry
                 if (entry) {
                     s.entryExists = true
-                    s.entryScore = entry.score || 0
+                    s.entryScore = Number(entry.score) || 0
                 }
                 refreshCollection(s.media.type)
-                ctx.toast.success("Bewertung gespeichert: " + formatNum(score))
+                ctx.toast.success(t("savedScore", formatNum(score)))
                 modal.close()
             }
             catch (e) {
                 s.error = errMsg(e)
-                ctx.toast.error("Speichern fehlgeschlagen: " + s.error)
+                ctx.toast.error(t("saveFailed", s.error))
             }
             s.saving = false
             modal.update()
@@ -289,12 +620,12 @@ function init() {
                     s.selected = parseEntryCustomLists(entry.customLists)
                 }
                 refreshCollection(s.media.type)
-                ctx.toast.success(names.length ? "Gespeichert: " + names.join(", ") : "Gespeichert: in keiner Custom List")
+                ctx.toast.success(names.length ? t("savedLists", names.join(", ")) : t("savedNoLists"))
                 modal.close()
             }
             catch (e) {
                 s.error = errMsg(e)
-                ctx.toast.error("Speichern fehlgeschlagen: " + s.error)
+                ctx.toast.error(t("saveFailed", s.error))
             }
             s.saving = false
             modal.update()
@@ -304,7 +635,7 @@ function init() {
             const name = (s.newListName || "").trim()
             if (!name) return
             if (s.lists.some((n) => n.toLowerCase() === name.toLowerCase())) {
-                ctx.toast.warning("Die Liste \"" + name + "\" gibt es schon.")
+                ctx.toast.warning(t("listExists", name))
                 return
             }
             s.saving = true
@@ -318,10 +649,10 @@ function init() {
                 s.lists = lists
                 s.selected[name] = true
                 s.newListName = ""
-                ctx.toast.success("Liste \"" + name + "\" angelegt und ausgewählt. Zum Übernehmen auf Speichern klicken.")
+                ctx.toast.success(t("listCreated", name))
             }
             catch (e) {
-                ctx.toast.error("Liste konnte nicht angelegt werden: " + errMsg(e))
+                ctx.toast.error(t("listCreateFailed", errMsg(e)))
             }
             s.saving = false
             modal.update()
@@ -332,67 +663,89 @@ function init() {
             s.mode = mode
             s.media = { id: media.id, title: titleOf(media), type: type }
             s.categories = []
-            s.scores = {}
             s.lists = []
             s.selected = {}
             s.newListName = ""
             s.error = ""
             s.loading = true
+            for (let i = 0; i < scoreRefs.length; i++) scoreRefs[i].setValue("")
             modal.open()
             load()
         }
 
-        // ---------------------------------------------------------------------------------------------
+        // -----------------------------------------------------------------------------------------
         // Rendering
 
         function renderRating(items, key, kind) {
             const sc = scale()
 
-            if (!sc) {
-                items.push(modal.alert({
-                    title: "Advanced Scoring nicht möglich",
-                    description: "Dein AniList-Bewertungssystem ist \"" + s.scoreFormat + "\". Kategorien gibt es auf AniList nur mit "
-                        + "\"100 Point\" oder \"10 Point Decimal\". Stell das auf anilist.co unter Settings → Lists um.",
-                    intent: "warning",
-                }))
-                return
+            if (s.entryExists && s.entryScore) {
+                items.push(modal.text(t("current", formatNum(s.entryScore), sc.max), { className: "text-[--muted]" }))
             }
-            if (!s.categories.length || !s.advancedEnabled) {
+
+            if (!s.categories.length) {
                 items.push(modal.alert({
-                    title: "Keine Kategorien eingerichtet",
-                    description: "Aktiviere auf anilist.co unter Settings → Lists → " + kind + " List das \"Advanced Scoring\" "
-                        + "und lege dort deine Kategorien an. Danach erscheinen sie hier.",
+                    title: t("noCategoriesTitle"),
+                    description: t("noCategoriesDesc", kind),
                     intent: "info",
                 }))
                 return
             }
 
-            const rows = s.categories.map((cat) => modal.input({
-                label: cat,
-                placeholder: sc.label,
-                value: s.scores[cat] || "",
-                disabled: s.saving,
-                onChange: ctx.eventHandler("acr-score-" + key + "-" + cat, (e) => {
-                    s.scores[cat] = (e && e.value !== undefined && e.value !== null) ? String(e.value) : ""
-                    modal.update()
+            const step = validStep()
+            if (sc.steps.length > 1) {
+                items.push(modal.select({
+                    label: t("step"),
+                    value: step,
+                    options: sc.steps.map((v) => ({ label: LANG === "en" || LANG === "ja" ? v : v.replace(".", ","), value: v })),
+                    disabled: s.saving,
+                    onChange: ctx.eventHandler("acr-step", (e) => {
+                        const v = e && e.value ? String(e.value) : ""
+                        if (v && sc.steps.indexOf(v) !== -1) {
+                            s.step = v
+                            reapplyStep()
+                            modal.update()
+                        }
+                    }),
+                }))
+            } else {
+                items.push(modal.text(t("stepHint"), { className: "text-sm text-[--muted]" }))
+            }
+
+            const rows = s.categories.map((cat, i) => modal.flex([
+                modal.input({
+                    label: cat,
+                    placeholder: "0–" + sc.max,
+                    value: categoryValue(i),
+                    fieldRef: scoreRefs[i],
+                    disabled: s.saving,
+                    className: "acr-score w-full",
                 }),
-            }))
+                modal.button("−", {
+                    intent: "gray-subtle",
+                    disabled: s.saving,
+                    onClick: ctx.eventHandler("acr-minus-" + i, () => nudge(i, -1)),
+                }),
+                modal.button("+", {
+                    intent: "gray-subtle",
+                    disabled: s.saving,
+                    onClick: ctx.eventHandler("acr-plus-" + i, () => nudge(i, 1)),
+                }),
+            ], { gap: 2, className: "items-end" }))
             items.push(modal.stack(rows, { gap: 3 }))
 
             const avg = average()
             items.push(modal.text(
-                avg === null
-                    ? "Gesamt: bitte nur Zahlen von 0 bis " + sc.max + " eingeben"
-                    : "Gesamt (Durchschnitt): " + (avg ? formatNum(avg) : "–") + " / " + sc.max,
+                avg === null ? t("totalInvalid", sc.max) : t("total", avg ? formatNum(avg) : "–", sc.max),
                 { className: "font-semibold" },
             ))
 
             items.push(modal.flex([
-                modal.button("Abbrechen", {
+                modal.button(t("cancel"), {
                     intent: "gray-subtle",
                     onClick: ctx.eventHandler("acr-cancel", () => modal.close()),
                 }),
-                modal.button("Speichern", {
+                modal.button(t("save"), {
                     intent: "primary",
                     loading: s.saving,
                     disabled: s.saving || avg === null,
@@ -403,7 +756,7 @@ function init() {
 
         function renderLists(items, key, kind) {
             if (!s.lists.length) {
-                items.push(modal.text("Du hast noch keine " + kind + " Custom Lists. Leg unten eine an.", { className: "text-[--muted]" }))
+                items.push(modal.text(t("noLists", kind), { className: "text-[--muted]" }))
             }
 
             const checks = s.lists.map((name) => modal.checkbox({
@@ -417,7 +770,7 @@ function init() {
             if (checks.length) items.push(modal.stack(checks, { gap: 2 }))
 
             items.push(modal.switch({
-                label: "In den Status-Listen ausblenden (nur in Custom Lists zeigen)",
+                label: t("hideStatus"),
                 value: !!s.hidden,
                 disabled: s.saving,
                 onChange: ctx.eventHandler("acr-hidden-" + key, (e) => {
@@ -427,7 +780,7 @@ function init() {
 
             items.push(modal.flex([
                 modal.input({
-                    placeholder: "Neue " + kind + " Custom List…",
+                    placeholder: t("newListPh", kind),
                     value: s.newListName,
                     disabled: s.saving,
                     onChange: ctx.eventHandler("acr-newlist-" + key, (e) => {
@@ -435,7 +788,7 @@ function init() {
                     }),
                     className: "w-full",
                 }),
-                modal.button("Anlegen", {
+                modal.button(t("create"), {
                     intent: "gray-subtle",
                     disabled: s.saving,
                     onClick: ctx.eventHandler("acr-create-" + key, () => createList()),
@@ -443,11 +796,11 @@ function init() {
             ], { gap: 2, className: "items-end" }))
 
             items.push(modal.flex([
-                modal.button("Abbrechen", {
+                modal.button(t("cancel"), {
                     intent: "gray-subtle",
                     onClick: ctx.eventHandler("acr-cancel", () => modal.close()),
                 }),
-                modal.button("Speichern", {
+                modal.button(t("save"), {
                     intent: "primary",
                     loading: s.saving,
                     disabled: s.saving,
@@ -460,26 +813,23 @@ function init() {
             if (!s.media) return modal.text("")
 
             const items = []
-            const kind = s.media.type === "MANGA" ? "Manga" : "Anime"
+            const kind = kindOf(s.media.type)
             const key = s.media.type + "-" + s.media.id
 
-            items.push(modal.text((s.mode === "rating" ? "Bewerten: " : "Custom Lists: ") + s.media.title, { className: "font-semibold text-lg" }))
+            items.push(modal.text(t(s.mode === "rating" ? "ratingTitle" : "listsTitle", s.media.title), { className: "font-semibold text-lg" }))
 
             if (s.loading) {
-                items.push(modal.text("Lade deine Einstellungen von AniList…", { className: "text-[--muted]" }))
+                items.push(modal.text(t("loading"), { className: "text-[--muted]" }))
                 return modal.stack(items, { gap: 3 })
             }
 
             if (s.error) {
-                items.push(modal.alert({ title: "Fehler", description: s.error, intent: "alert" }))
+                items.push(modal.alert({ title: t("error"), description: s.error, intent: "alert" }))
                 if (!s.userId) return modal.stack(items, { gap: 4 })
             }
 
             if (!s.entryExists) {
-                items.push(modal.alert({
-                    description: "Dieser " + kind + " ist noch nicht auf deiner Liste. Beim Speichern wird er als \"Planning\" hinzugefügt.",
-                    intent: "info",
-                }))
+                items.push(modal.alert({ description: t("notOnList", kind), intent: "info" }))
             }
 
             if (s.mode === "rating") renderRating(items, key, kind)
@@ -488,27 +838,27 @@ function init() {
             return modal.stack(items, { gap: 4 })
         })
 
-        // ---------------------------------------------------------------------------------------------
+        // -----------------------------------------------------------------------------------------
         // Entry points
 
         function addButtons(type) {
             const isManga = type === "MANGA"
             const newPageButton = (props) => isManga ? ctx.action.newMangaPageButton(props) : ctx.action.newAnimePageButton(props)
 
-            const rate = newPageButton({ label: "Bewerten", intent: "primary-subtle" })
+            const rate = newPageButton({ label: t("rate"), intent: "primary-subtle" })
             rate.mount()
             rate.onClick((e) => openFor(e.media, type, "rating"))
 
-            const lists = newPageButton({ label: "Custom Lists", intent: "gray-subtle" })
+            const lists = newPageButton({ label: t("lists"), intent: "gray-subtle" })
             lists.mount()
             lists.onClick((e) => openFor(e.media, type, "lists"))
 
             const forMedia = isManga ? "manga" : "anime"
-            const rateItem = ctx.action.newMediaCardContextMenuItem({ label: "Bewerten (Kategorien)", for: forMedia })
+            const rateItem = ctx.action.newMediaCardContextMenuItem({ label: t("rateMenu"), for: forMedia })
             rateItem.mount()
             rateItem.onClick((e) => openFor(e.media, type, "rating"))
 
-            const listItem = ctx.action.newMediaCardContextMenuItem({ label: "Custom Lists", for: forMedia })
+            const listItem = ctx.action.newMediaCardContextMenuItem({ label: t("listsMenu"), for: forMedia })
             listItem.mount()
             listItem.onClick((e) => openFor(e.media, type, "lists"))
         }

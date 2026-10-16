@@ -1,25 +1,39 @@
 # AniList Custom Ratings – Plugin für Seanime
 
-Gebaut für Seanime Denshi 3.10.4 (deine Version).
+Gebaut für Seanime Denshi 3.10.4.
+
+Sprachen: Deutsch, English, Español, Português, 日本語
 
 ## Was es macht
 
 Auf jeder Anime- und Manga-Seite und im Rechtsklick-Menü der Karten gibt es zwei neue Buttons:
 
-**Bewerten:** Öffnet ein Fenster mit deinen AniList-Bewertungskategorien (Advanced Scoring, z. B. Story, Characters, Visuals, Audio, Enjoyment). Du gibst pro Kategorie eine Zahl ein. Die Gesamtnote ist der Durchschnitt aller bewerteten Kategorien (leere oder 0 zählen nicht mit), genau wie auf AniList. „Speichern“ schickt die Einzelwerte und die Gesamtnote an AniList.
+**Bewerten / Rate:** Öffnet ein Fenster mit deinen AniList-Bewertungskategorien (Advanced Scoring, z. B. Story, Characters, Visuals, Audio, Enjoyment).
+
+- Deine bisherigen Kategorie-Bewertungen werden von AniList geladen und sind schon eingetragen.
+- Deine aktuelle Gesamtnote auf AniList wird oben angezeigt.
+- Pro Kategorie gibst du eine Zahl ein, mit der Tastatur, den Pfeiltasten oder den Buttons − und +.
+- Die Schrittweite der Pfeiltasten und Buttons stellst du im Fenster ein: 1, 0,5 oder 0,1 (bei „100 Point“: 1, 5 oder 10).
+- Die Gesamtnote ist der Durchschnitt aller bewerteten Kategorien (leere oder 0 zählen nicht mit), genau wie auf AniList.
+- „Speichern“ schickt die Einzelwerte und die Gesamtnote an AniList.
 
 **Custom Lists:** Häkchen setzen, in welchen Custom Lists der Titel steht, ihn optional aus den Status-Listen ausblenden und neue Custom Lists anlegen.
 
 Ist der Titel noch nicht auf deiner Liste, wird er beim Speichern als „Planning“ hinzugefügt.
 
+## Einstellungen
+
+In Seanime unter **Extensions → AniList Custom Ratings → Preferences**:
+
+- **Language:** Sprache des Plugins (Standard: English)
+- **Default arrow key step:** Schrittweite, mit der das Fenster startet
+
 ## Voraussetzungen auf AniList
 
 Unter anilist.co → Settings → Lists:
 
-- Scoring System auf **100 Point** oder **10 Point Decimal** (nur damit erlaubt AniList Kategorien)
 - **Advanced Scoring** aktivieren und deine Kategorien anlegen (für Anime und Manga getrennt)
-
-Wenn etwas davon fehlt, sagt dir das Plugin im Fenster, was zu tun ist.
+- Für Schritte von 0,5 und 0,1 brauchst du das Scoring System **10 Point Decimal**
 
 ## Installation
 
@@ -35,7 +49,7 @@ Danach das Plugin aktivieren und die Berechtigungen bestätigen (AniList-Zugriff
 
 1. Seanime schließen.
 2. `anilist-custom-lists.json` in den Ordner `%APPDATA%\Seanime\extensions` kopieren (eine ältere Version mit demselben Namen einfach ersetzen).
-3. Seanime starten, unter **Extensions** das Plugin aktivieren und die Berechtigungen bestätigen (AniList-Zugriff und AniList-Token, damit es in deinem Namen speichern kann).
+3. Seanime starten, unter **Extensions** das Plugin aktivieren und die Berechtigungen bestätigen.
 
 ## Dateien
 
