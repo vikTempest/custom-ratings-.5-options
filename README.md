@@ -23,7 +23,7 @@ Wenn etwas davon fehlt, sagt dir das Plugin im Fenster, was zu tun ist.
 
 ## Installation
 
-**Per Link (empfohlen):** In Seanime unter **Extensions** auf „Add extension“ klicken und diesen Link einfügen:
+**Per Link (empfohlen):** In Seanime unter **Extensions** auf „Add extensions“ klicken und unter „Install from URL“ diesen Link einfügen:
 
 ```
 https://raw.githubusercontent.com/vikTempest/custom-ratings-.5-options/main/anilist-custom-lists.json
