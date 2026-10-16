@@ -3,8 +3,10 @@
 
 // AniList Custom Ratings for Seanime
 //
-// Adds a "Rate" button to anime and manga pages (and the media card context menu) that opens a
-// rating window with your AniList Advanced Scoring categories (e.g. Story, Characters, Visuals).
+// Adds a "Custom Rating" section with your AniList Advanced Scoring categories (e.g. Story,
+// Characters, Visuals) below Seanime's own list editor. When you click Save, the average becomes
+// your score. There is also a "Rate" button on anime and manga pages (and in the media card
+// context menu) that opens the same rating in a separate window.
 // Existing category scores are loaded from AniList, arrow keys step by 1, 0.5 or 0.1, and the
 // overall score is the average of the rated categories, like on AniList. A second button,
 // "Custom Lists", assigns the entry to your custom lists. Everything is saved directly to AniList.
@@ -12,6 +14,53 @@
 // UI language: German, English, Spanish, Portuguese, Japanese (plugin setting "language").
 
 function init() {
+
+    // ---------------------------------------------------------------------------------------------
+    // Save hooks for Seanime's own list editor.
+    //
+    // When you change categories in the "Custom Rating" section of the editor, the plugin stores
+    // the pending rating in $store. When you then click Seanime's Save button, these hooks put the
+    // average in as your score and save the category scores to AniList.
+    // Hooks run in their own runtime, so everything they need is inside them.
+
+    $app.onPreUpdateEntry((e) => {
+        try {
+            const pending = $store.get("acr:pending:" + e.mediaId)
+            const fresh = pending && pending.time && (Date.now() - pending.time) < 30 * 60 * 1000
+            if (fresh && pending.scoreRaw !== null && pending.scoreRaw !== undefined) {
+                e.scoreRaw = pending.scoreRaw
+            }
+        }
+        catch (err) {
+            console.error("anilist-custom-ratings: pre update hook failed", err)
+        }
+        e.next()
+    })
+
+    $app.onPostUpdateEntry((e) => {
+        try {
+            const key = "acr:pending:" + e.mediaId
+            const pending = $store.get(key)
+            const fresh = pending && pending.time && (Date.now() - pending.time) < 30 * 60 * 1000
+            if (fresh) {
+                $store.set(key, { time: 0 })
+                const token = $database.anilist.getToken()
+                if (token) {
+                    const variables = { mediaId: e.mediaId, advancedScores: pending.advancedScores }
+                    if (pending.scoreRaw !== null && pending.scoreRaw !== undefined) variables.scoreRaw = pending.scoreRaw
+                    $anilist.customQuery({
+                        query: "mutation ($mediaId: Int, $advancedScores: [Float], $scoreRaw: Int) { SaveMediaListEntry(mediaId: $mediaId, advancedScores: $advancedScores, scoreRaw: $scoreRaw) { id } }",
+                        variables: variables,
+                    }, token)
+                }
+            }
+        }
+        catch (err) {
+            console.error("anilist-custom-ratings: saving category scores failed", err)
+        }
+        e.next()
+    })
+
     $ui.register((ctx) => {
 
         // -----------------------------------------------------------------------------------------
@@ -49,6 +98,13 @@ function init() {
                 listCreateFailed: "Could not create the list: {0}",
                 savedLists: "Saved: {0}",
                 savedNoLists: "Saved: in no custom list",
+                editorTitle: "Custom Rating",
+                editorAvg: "Average: {0} / {1}",
+                editorScore: "Saved as Score: {0}",
+                editorHint: "Change a category and the average becomes your Score when you click Save.",
+                editorNotFound: "Could not detect this title. Use the \"Rate\" button on its page instead.",
+                editorLoading: "Loading your categories…",
+                editorNoCategories: "No rating categories set up. On anilist.co go to Settings → Lists → Advanced Scoring.",
             },
             de: {
                 anime: "Anime", manga: "Manga",
@@ -81,6 +137,13 @@ function init() {
                 listCreateFailed: "Liste konnte nicht angelegt werden: {0}",
                 savedLists: "Gespeichert: {0}",
                 savedNoLists: "Gespeichert: in keiner Custom List",
+                editorTitle: "Custom Rating",
+                editorAvg: "Durchschnitt: {0} / {1}",
+                editorScore: "Wird als Score gespeichert: {0}",
+                editorHint: "Ändere eine Kategorie, dann wird der Durchschnitt beim Speichern dein Score.",
+                editorNotFound: "Titel konnte nicht erkannt werden. Nutze stattdessen den Button \"Bewerten\" auf seiner Seite.",
+                editorLoading: "Lade deine Kategorien…",
+                editorNoCategories: "Keine Bewertungskategorien eingerichtet. Auf anilist.co unter Settings → Lists → Advanced Scoring.",
             },
             es: {
                 anime: "anime", manga: "manga",
@@ -113,6 +176,13 @@ function init() {
                 listCreateFailed: "No se pudo crear la lista: {0}",
                 savedLists: "Guardado: {0}",
                 savedNoLists: "Guardado: en ninguna lista personalizada",
+                editorTitle: "Calificación personalizada",
+                editorAvg: "Promedio: {0} / {1}",
+                editorScore: "Se guardará como Score: {0}",
+                editorHint: "Cambia una categoría y el promedio será tu Score al pulsar Save.",
+                editorNotFound: "No se pudo detectar este título. Usa el botón \"Calificar\" en su página.",
+                editorLoading: "Cargando tus categorías…",
+                editorNoCategories: "No hay categorías configuradas. En anilist.co ve a Settings → Lists → Advanced Scoring.",
             },
             pt: {
                 anime: "anime", manga: "mangá",
@@ -145,6 +215,13 @@ function init() {
                 listCreateFailed: "Não foi possível criar a lista: {0}",
                 savedLists: "Salvo: {0}",
                 savedNoLists: "Salvo: em nenhuma lista personalizada",
+                editorTitle: "Avaliação personalizada",
+                editorAvg: "Média: {0} / {1}",
+                editorScore: "Será salvo como Score: {0}",
+                editorHint: "Altere uma categoria e a média vira seu Score ao clicar em Save.",
+                editorNotFound: "Não foi possível detectar este título. Use o botão \"Avaliar\" na página dele.",
+                editorLoading: "Carregando suas categorias…",
+                editorNoCategories: "Nenhuma categoria configurada. No anilist.co vá em Settings → Lists → Advanced Scoring.",
             },
             ja: {
                 anime: "アニメ", manga: "マンガ",
@@ -177,6 +254,13 @@ function init() {
                 listCreateFailed: "リストを作成できませんでした：{0}",
                 savedLists: "保存しました：{0}",
                 savedNoLists: "保存しました：カスタムリストなし",
+                editorTitle: "カスタム評価",
+                editorAvg: "平均：{0} / {1}",
+                editorScore: "スコアとして保存：{0}",
+                editorHint: "カテゴリーを変更すると、Saveを押したときに平均がスコアになります。",
+                editorNotFound: "この作品を判別できませんでした。作品ページの「評価する」ボタンを使ってください。",
+                editorLoading: "カテゴリーを読み込んでいます…",
+                editorNoCategories: "評価カテゴリーがありません。anilist.co の Settings → Lists → Advanced Scoring で設定してください。",
             },
         }
 
@@ -407,15 +491,15 @@ function init() {
 
         // AniList stores category scores as 0–100 values. Depending on how they were saved they can
         // also be on your score format's scale. We look at your existing scores to find out.
-        function detectStoredFactor(entryAdv) {
-            const sc = scale()
+        function detectStoredFactor(entryAdv, scoreFormat, type, userId) {
+            const sc = SCALES[scoreFormat] || SCALES.POINT_100
             if (sc.max >= 100) return 1
-            const cacheKey = s.media.type + ":" + s.scoreFormat
+            const cacheKey = type + ":" + scoreFormat
             let values = numbersOf(entryAdv).filter((n) => n > 0)
             if (!values.length) {
                 if (factorCache[cacheKey]) return factorCache[cacheKey]
                 try {
-                    const res = query({ query: QUERY_RECENT_SCORES, variables: { userId: s.userId, type: s.media.type } })
+                    const res = query({ query: QUERY_RECENT_SCORES, variables: { userId: userId, type: type } })
                     const entries = (res && res.Page && res.Page.mediaList) || []
                     for (let i = 0; i < entries.length; i++) {
                         values = values.concat(numbersOf(entries[i].advancedScores).filter((n) => n > 0))
@@ -551,7 +635,7 @@ function init() {
                 }
 
                 if (s.mode === "rating") {
-                    s.storedFactor = detectStoredFactor(adv)
+                    s.storedFactor = detectStoredFactor(adv, s.scoreFormat, s.media.type, s.userId)
                     for (let i = 0; i < s.categories.length; i++) {
                         const raw = adv ? Number(adv[s.categories[i]]) : 0
                         const shown = raw ? raw / s.storedFactor : 0
@@ -836,6 +920,386 @@ function init() {
             else renderLists(items, key, kind)
 
             return modal.stack(items, { gap: 4 })
+        })
+
+        // -----------------------------------------------------------------------------------------
+        // Seanime's own list editor: "Custom Rating" section below the form
+        //
+        // The section is a webview in the "after-media-entry-form" slot. It finds out which title
+        // the editor is open for, shows your categories with their current scores, and keeps the
+        // pending rating in $store. The save hooks at the top of init() apply it when you click
+        // Seanime's Save button. The average is also shown in Seanime's Score field.
+
+        const PENDING_PREFIX = "acr:pending:"
+
+        const editor = {
+            media: null,        // { id, type }
+            scoreFormat: "",
+            categories: [],
+            storedFactor: 1,
+        }
+
+        const EDITOR_HTML = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; padding: 0; background: transparent; }
+  body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; color: #e4e4e7; font-size: 14px; }
+  .wrap { padding: 12px 0 4px 0; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 4px; }
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .title { font-weight: 600; font-size: 15px; }
+  .muted { color: #a1a1aa; font-size: 13px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 14px; }
+  label { display: block; font-weight: 500; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  input, select { box-sizing: border-box; width: 100%; height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color: #e4e4e7; font: inherit; outline: none; }
+  select { width: auto; height: 32px; padding: 0 8px; }
+  input:focus, select:focus { border-color: rgba(255,255,255,0.35); }
+  input.bad { border-color: #ef4444; }
+  .foot { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 12px; align-items: baseline; }
+  .avg { font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap" id="root"><div class="muted" id="msg"></div></div>
+<script>
+  var state = null;
+  var timer = null;
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function fmt(s, a, b) {
+    return String(s).split("{0}").join(a).split("{1}").join(b);
+  }
+
+  function parse(v) {
+    v = String(v === undefined || v === null ? "" : v).trim().replace(",", ".");
+    if (v === "") return 0;
+    if (!/^(\\d+(\\.\\d+)?|\\.\\d+)$/.test(v)) return null;
+    var n = parseFloat(v);
+    if (isNaN(n) || n < 0 || n > state.max) return null;
+    var f = Math.pow(10, state.decimals);
+    return Math.round(n * f) / f;
+  }
+
+  function average(values) {
+    var sum = 0, count = 0;
+    for (var i = 0; i < values.length; i++) {
+      var n = parse(values[i]);
+      if (n === null) return null;
+      if (n > 0) { sum += n; count++; }
+    }
+    if (!count) return 0;
+    var f = Math.pow(10, state.decimals);
+    return Math.round((sum / count) * f) / f;
+  }
+
+  function showMessage(text) {
+    var root = document.getElementById("root");
+    root.innerHTML = "";
+    root.appendChild(el("div", "muted", text));
+  }
+
+  function render() {
+    var root = document.getElementById("root");
+    root.innerHTML = "";
+
+    var head = el("div", "head");
+    head.appendChild(el("div", "title", state.labels.title));
+    if (state.steps.length > 1) {
+      var stepWrap = el("div", "muted");
+      stepWrap.appendChild(document.createTextNode(state.labels.step + " "));
+      var sel = el("select");
+      for (var s = 0; s < state.steps.length; s++) {
+        var o = el("option", "", state.steps[s]);
+        o.value = state.steps[s];
+        if (state.steps[s] === state.step) o.selected = true;
+        sel.appendChild(o);
+      }
+      sel.addEventListener("change", function () {
+        state.step = sel.value;
+        var inputs = document.querySelectorAll("input[data-i]");
+        for (var k = 0; k < inputs.length; k++) inputs[k].step = state.step;
+        webview.send("step", { step: state.step });
+      });
+      stepWrap.appendChild(sel);
+      head.appendChild(stepWrap);
+    }
+    root.appendChild(head);
+
+    var grid = el("div", "grid");
+    for (var i = 0; i < state.categories.length; i++) {
+      var cell = el("div");
+      var lab = el("label", "", state.categories[i]);
+      lab.title = state.categories[i];
+      var input = el("input");
+      input.type = "number";
+      input.inputMode = "decimal";
+      input.min = "0";
+      input.max = String(state.max);
+      input.step = state.step;
+      input.placeholder = "0–" + state.max;
+      input.value = state.values[i] || "";
+      input.setAttribute("data-i", String(i));
+      input.addEventListener("input", onInput);
+      cell.appendChild(lab);
+      cell.appendChild(input);
+      grid.appendChild(cell);
+    }
+    root.appendChild(grid);
+
+    var foot = el("div", "foot");
+    foot.appendChild(el("span", "avg", ""));
+    foot.appendChild(el("span", "muted score", ""));
+    root.appendChild(foot);
+    root.appendChild(el("div", "muted hint", state.labels.hint));
+    updateFooter();
+  }
+
+  function updateFooter() {
+    var avg = average(state.values);
+    var avgEl = document.querySelector(".avg");
+    var scoreEl = document.querySelector(".score");
+    if (!avgEl) return;
+    avgEl.textContent = fmt(state.labels.avg, avg === null ? "?" : (avg ? String(avg) : "–"), state.max);
+    var raw = (avg && avg !== null) ? Math.round(avg / state.max * 100) : 0;
+    scoreEl.textContent = (state.dirty && raw) ? fmt(state.labels.score, String(raw / 10), "") : "";
+    var inputs = document.querySelectorAll("input[data-i]");
+    for (var k = 0; k < inputs.length; k++) {
+      var bad = parse(inputs[k].value) === null;
+      if (bad) inputs[k].classList.add("bad"); else inputs[k].classList.remove("bad");
+    }
+  }
+
+  function onInput(ev) {
+    var i = parseInt(ev.target.getAttribute("data-i"), 10);
+    state.values[i] = ev.target.value;
+    state.dirty = true;
+    updateFooter();
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(function () {
+      webview.send("change", { mediaId: state.mediaId, values: state.values.slice() });
+    }, 150);
+  }
+
+  webview.on("status", function (data) {
+    showMessage(data && data.text ? data.text : "");
+  });
+
+  webview.on("init", function (data) {
+    state = data;
+    state.dirty = false;
+    render();
+  });
+
+  window.addEventListener("load", function () {
+    webview.send("ready", {});
+  });
+</script>
+</body>
+</html>`
+
+        const editorView = ctx.newWebview({
+            slot: "after-media-entry-form",
+            autoHeight: true,
+            fullWidth: true,
+        })
+        editorView.setContent(() => EDITOR_HTML)
+
+        function editorStatus(text) {
+            try {
+                editorView.channel.send("status", { text: text })
+            }
+            catch (e) {
+                console.warn("anilist-custom-ratings: could not update editor section", e)
+            }
+        }
+
+        function mediaIdFromBanner(src) {
+            if (!src) return null
+            let url = String(src)
+            try {
+                url = decodeURIComponent(url)
+            }
+            catch (e) {
+                // keep as is
+            }
+            const m = /media\/(anime|manga)\/banner\/[a-z]*(\d+)-/i.exec(url)
+            if (!m) return null
+            return { id: parseInt(m[2], 10), type: m[1].toLowerCase() === "manga" ? "MANGA" : "ANIME" }
+        }
+
+        function findInCollection(getter, type, title) {
+            let col = null
+            try {
+                col = plain(getter())
+            }
+            catch (e) {
+                return null
+            }
+            const lists = (col && col.MediaListCollection && col.MediaListCollection.lists) || []
+            for (let i = 0; i < lists.length; i++) {
+                const entries = (lists[i] && lists[i].entries) || []
+                for (let j = 0; j < entries.length; j++) {
+                    const media = entries[j] && entries[j].media
+                    const ti = (media && media.title) || {}
+                    if (media && (ti.userPreferred === title || ti.romaji === title || ti.english === title || ti.native === title)) {
+                        return { id: media.id, type: type }
+                    }
+                }
+            }
+            return null
+        }
+
+        function mediaFromTitle(title) {
+            title = (title || "").trim()
+            if (!title) return null
+            return findInCollection(() => $anilist.getRawAnimeCollection(false), "ANIME", title)
+                || findInCollection(() => $anilist.getRawMangaCollection(false), "MANGA", title)
+        }
+
+        function identifyEditorMedia() {
+            const formSel = "[role=\"dialog\"]:has([data-anilist-media-entry-modal-form])"
+            return ctx.dom.queryOne("[data-anilist-media-entry-modal-banner-image]")
+                .then((img) => img ? img.getAttribute("src") : null)
+                .then((src) => {
+                    const fromBanner = mediaIdFromBanner(src)
+                    if (fromBanner) return fromBanner
+                    return ctx.dom.queryOne(formSel + " .UI-Modal__title")
+                        .then((el) => el || ctx.dom.queryOne(formSel + " p.line-clamp-1"))
+                        .then((el) => el ? el.getText() : "")
+                        .then((title) => mediaFromTitle(title))
+                })
+        }
+
+        function loadEditor(media) {
+            const viewer = (query({ query: QUERY_VIEWER }) || {}).Viewer
+            if (!viewer) throw new Error(t("accountFailed"))
+            const opts = viewer.mediaListOptions || {}
+            const listOpts = (media.type === "MANGA" ? opts.mangaList : opts.animeList) || {}
+            const scoreFormat = opts.scoreFormat || "POINT_100"
+            const sc = SCALES[scoreFormat] || SCALES.POINT_100
+            const categories = (listOpts.advancedScoring || []).filter((n) => !!n)
+
+            if (!categories.length) {
+                editorStatus(t("editorNoCategories"))
+                return
+            }
+
+            let adv = null
+            try {
+                const res = query({ query: QUERY_ENTRY, variables: { mediaId: media.id, userId: viewer.id } })
+                adv = res && res.MediaList && res.MediaList.advancedScores
+                if (typeof adv === "string") adv = JSON.parse(adv)
+            }
+            catch (e) {
+                if (!/not found/i.test(errMsg(e))) throw e
+            }
+
+            const factor = detectStoredFactor(adv, scoreFormat, media.type, viewer.id)
+            const values = categories.map((cat) => {
+                const raw = adv ? Number(adv[cat]) : 0
+                return raw ? String(round(raw / factor, sc.decimals)) : ""
+            })
+
+            editor.media = media
+            editor.scoreFormat = scoreFormat
+            editor.categories = categories
+            editor.storedFactor = factor
+
+            const steps = sc.steps
+            const step = steps.indexOf(s.step) !== -1 ? s.step : steps[0]
+
+            editorView.channel.send("init", {
+                mediaId: media.id,
+                categories: categories,
+                values: values,
+                max: sc.max,
+                decimals: sc.decimals,
+                steps: steps,
+                step: step,
+                labels: {
+                    title: t("editorTitle"),
+                    step: t("step"),
+                    avg: t("editorAvg"),
+                    score: t("editorScore"),
+                    hint: t("editorHint"),
+                },
+            })
+        }
+
+        editorView.channel.on("ready", () => {
+            editor.media = null
+            editorStatus(t("editorLoading"))
+            identifyEditorMedia()
+                .then((media) => {
+                    if (!media) {
+                        editorStatus(t("editorNotFound"))
+                        return
+                    }
+                    try {
+                        loadEditor(media)
+                    }
+                    catch (e) {
+                        editorStatus(t("error") + ": " + errMsg(e))
+                    }
+                })
+                .catch((e) => editorStatus(t("error") + ": " + errMsg(e)))
+        })
+
+        editorView.channel.on("step", (payload) => {
+            if (payload && payload.step) s.step = String(payload.step)
+        })
+
+        editorView.channel.on("change", (payload) => {
+            try {
+                if (!editor.media || !payload || payload.mediaId !== editor.media.id) return
+                const sc = SCALES[editor.scoreFormat] || SCALES.POINT_100
+                const values = payload.values || []
+                const advancedScores = []
+                let sum = 0, count = 0
+                for (let i = 0; i < editor.categories.length; i++) {
+                    const v = String(values[i] === undefined || values[i] === null ? "" : values[i]).trim().replace(",", ".")
+                    let n = v === "" ? 0 : parseFloat(v)
+                    if (isNaN(n) || n < 0 || n > sc.max) {
+                        // Invalid input: forget the pending rating so nothing wrong gets saved
+                        $store.set(PENDING_PREFIX + editor.media.id, { time: 0 })
+                        return
+                    }
+                    n = round(n, sc.decimals)
+                    advancedScores.push(round(n * editor.storedFactor, 1))
+                    if (n > 0) {
+                        sum += n
+                        count++
+                    }
+                }
+                const avg = count ? round(sum / count, sc.decimals) : 0
+                const scoreRaw = count ? Math.round(avg / sc.max * 100) : null
+
+                $store.set(PENDING_PREFIX + editor.media.id, {
+                    time: Date.now(),
+                    scoreRaw: scoreRaw,
+                    advancedScores: advancedScores,
+                })
+
+                // Show the average in Seanime's Score field (0–10). The save hook makes sure it is saved.
+                if (scoreRaw !== null) {
+                    ctx.dom.queryOne("[data-anilist-media-entry-modal-form] input[name=\"score\"]")
+                        .then((input) => {
+                            if (input) input.setProperty("value", String(scoreRaw / 10))
+                        })
+                        .catch(() => {})
+                }
+            }
+            catch (e) {
+                console.warn("anilist-custom-ratings: could not handle category change", e)
+            }
         })
 
         // -----------------------------------------------------------------------------------------

@@ -6,16 +6,15 @@ Sprachen: Deutsch, English, Español, Português, 日本語
 
 ## Was es macht
 
-Auf jeder Anime- und Manga-Seite und im Rechtsklick-Menü der Karten gibt es zwei neue Buttons:
-
-**Bewerten / Rate:** Öffnet ein Fenster mit deinen AniList-Bewertungskategorien (Advanced Scoring, z. B. Story, Characters, Visuals, Audio, Enjoyment).
+**Im Seanime-Bearbeiten-Fenster:** Wenn du bei einem Eintrag auf den Bearbeiten-Button klickst, erscheint unter den normalen Feldern ein Bereich **„Custom Rating“** mit deinen AniList-Bewertungskategorien (Advanced Scoring, z. B. Story, Characters, Visuals).
 
 - Deine bisherigen Kategorie-Bewertungen werden von AniList geladen und sind schon eingetragen.
-- Deine aktuelle Gesamtnote auf AniList wird oben angezeigt.
-- Pro Kategorie gibst du eine Zahl ein, mit der Tastatur, den Pfeiltasten oder den Buttons − und +.
-- Die Schrittweite der Pfeiltasten und Buttons stellst du im Fenster ein: 1, 0,5 oder 0,1 (bei „100 Point“: 1, 5 oder 10).
-- Die Gesamtnote ist der Durchschnitt aller bewerteten Kategorien (leere oder 0 zählen nicht mit), genau wie auf AniList.
-- „Speichern“ schickt die Einzelwerte und die Gesamtnote an AniList.
+- Die Felder sind Zahlenfelder. Mit den Pfeiltasten springst du in der eingestellten Schrittweite: 1, 0,5 oder 0,1 (bei „100 Point“: 1, 5 oder 10).
+- Der Durchschnitt aller bewerteten Kategorien (leere oder 0 zählen nicht mit) wird oben ins Score-Feld eingetragen.
+- Klickst du auf Seanimes „Save“, wird der Durchschnitt als Score gespeichert und die Kategorie-Werte landen ebenfalls auf AniList.
+- Änderst du keine Kategorie, bleibt der Score so, wie du ihn eingegeben hast.
+
+**Bewerten / Rate:** Der Button auf Anime- und Manga-Seiten (und im Rechtsklick-Menü der Karten) öffnet dieselbe Bewertung in einem eigenen Fenster, mit zusätzlichen −/+ Buttons.
 
 **Custom Lists:** Häkchen setzen, in welchen Custom Lists der Titel steht, ihn optional aus den Status-Listen ausblenden und neue Custom Lists anlegen.
 
