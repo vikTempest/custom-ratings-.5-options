@@ -46,7 +46,8 @@ function init() {
                 $store.set(key, { time: 0 })
                 const token = $database.anilist.getToken()
                 if (token) {
-                    const variables = { mediaId: e.mediaId, advancedScores: pending.advancedScores }
+                    const variables = { mediaId: e.mediaId }
+                    if (Array.isArray(pending.advancedScores)) variables.advancedScores = pending.advancedScores
                     if (pending.scoreRaw !== null && pending.scoreRaw !== undefined) variables.scoreRaw = pending.scoreRaw
                     $anilist.customQuery({
                         query: "mutation ($mediaId: Int, $advancedScores: [Float], $scoreRaw: Int) { SaveMediaListEntry(mediaId: $mediaId, advancedScores: $advancedScores, scoreRaw: $scoreRaw) { id } }",
@@ -1187,6 +1188,9 @@ function init() {
             const sc = SCALES[scoreFormat] || SCALES.POINT_100
             const categories = (listOpts.advancedScoring || []).filter((n) => !!n)
 
+            editor.scoreFormat = scoreFormat
+            updateScoreStep()
+
             if (!categories.length) {
                 editorStatus(t("editorNoCategories"))
                 return
@@ -1255,6 +1259,7 @@ function init() {
 
         editorView.channel.on("step", (payload) => {
             if (payload && payload.step) s.step = String(payload.step)
+            updateScoreStep()
         })
 
         editorView.channel.on("change", (payload) => {
@@ -1288,8 +1293,16 @@ function init() {
                     advancedScores: advancedScores,
                 })
 
-                // Show the average in Seanime's Score field (0–10). The save hook makes sure it is saved.
+                // Show the average in the Score field (0–10). The save hook makes sure it is saved.
                 if (scoreRaw !== null) {
+                    if (scoreField.el) {
+                        try {
+                            scoreField.el.setProperty("value", String(scoreRaw / 10))
+                        }
+                        catch (e) {
+                            // the editor was closed
+                        }
+                    }
                     ctx.dom.queryOne("[data-anilist-media-entry-modal-form] input[name=\"score\"]")
                         .then((input) => {
                             if (input) input.setProperty("value", String(scoreRaw / 10))
@@ -1300,6 +1313,106 @@ function init() {
             catch (e) {
                 console.warn("anilist-custom-ratings: could not handle category change", e)
             }
+        })
+
+        // -----------------------------------------------------------------------------------------
+        // Score field with your arrow key step
+        //
+        // Seanime's own Score field always steps by 1 with the arrow keys, and plugins cannot change
+        // that. So the plugin hides it and puts its own Score field in the same spot, which steps by
+        // the chosen step (1, 0.5 or 0.1). The save hook uses this value when you click Save.
+
+        const NATIVE_SCORE = "[data-anilist-media-entry-modal-form] input[name=\"score\"]"
+
+        const scoreField = {
+            el: null,
+            creating: false,
+        }
+
+        // The step on Seanime's 0–10 Score scale
+        function scoreStep10() {
+            const step = parseFloat(s.step)
+            const sc = SCALES[editor.scoreFormat]
+            if (!step || step <= 0) return "1"
+            if (!sc) return step <= 1 ? String(step) : "1"
+            return String(round(step * 10 / sc.max, 2))
+        }
+
+        function updateScoreStep() {
+            if (!scoreField.el) return
+            try {
+                scoreField.el.setAttribute("step", scoreStep10())
+            }
+            catch (e) {
+                // the editor was closed
+            }
+        }
+
+        function onScoreInput(input, mediaId) {
+            Promise.resolve(input.getProperty("value"))
+                .then((value) => {
+                    const v = String(value === undefined || value === null ? "" : value).trim().replace(",", ".")
+                    const n = v === "" ? 0 : parseFloat(v)
+                    if (isNaN(n) || n < 0 || n > 10) return
+                    const key = PENDING_PREFIX + mediaId
+                    const prev = $store.get(key)
+                    const fresh = prev && prev.time && (Date.now() - prev.time) < 30 * 60 * 1000
+                    $store.set(key, {
+                        time: Date.now(),
+                        scoreRaw: Math.round(n * 10),
+                        advancedScores: fresh ? prev.advancedScores : undefined,
+                    })
+                })
+                .catch((e) => console.warn("anilist-custom-ratings: could not read the score", e))
+        }
+
+        function setupScoreField() {
+            if (scoreField.creating) return
+            scoreField.creating = true
+            let native = null
+            ctx.dom.queryOne("[data-anilist-media-entry-modal-form] .acr-native-score")
+                .then((existing) => existing ? null : ctx.dom.queryOne(NATIVE_SCORE))
+                .then((el) => {
+                    native = el
+                    if (!native) return null
+                    return identifyEditorMedia().catch(() => null)
+                })
+                .then((media) => {
+                    if (!native || !media) return null
+                    return Promise.all([
+                        Promise.resolve(native.getAttribute("class")),
+                        Promise.resolve(native.getProperty("value")),
+                        ctx.dom.createElement("input"),
+                    ]).then((res) => {
+                        const cls = res[0], value = res[1], input = res[2]
+                        input.setAttribute("type", "number")
+                        input.setAttribute("inputmode", "decimal")
+                        input.setAttribute("min", "0")
+                        input.setAttribute("max", "10")
+                        input.setAttribute("step", scoreStep10())
+                        input.setAttribute("class", (cls ? String(cls) + " " : "") + "acr-native-score")
+                        input.setProperty("value", value === undefined || value === null ? "" : String(value))
+                        native.after(input)
+                        native.setStyle("display", "none")
+                        ctx.dom.queryOne(NATIVE_SCORE + " ~ .UI-NumberInput__controlsContainer")
+                            .then((controls) => {
+                                if (controls) controls.setStyle("display", "none")
+                            })
+                            .catch(() => {})
+                        scoreField.el = input
+                        input.addEventListener("input", () => onScoreInput(input, media.id))
+                    })
+                })
+                .catch((e) => console.warn("anilist-custom-ratings: could not set up the score field", e))
+                .then(() => {
+                    scoreField.creating = false
+                })
+        }
+
+        ctx.dom.onReady(() => {
+            ctx.dom.observe(NATIVE_SCORE, (elements) => {
+                if (elements && elements.length) setupScoreField()
+            })
         })
 
         // -----------------------------------------------------------------------------------------

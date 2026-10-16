@@ -11,6 +11,7 @@ Sprachen: Deutsch, English, Español, Português, 日本語
 - Deine bisherigen Kategorie-Bewertungen werden von AniList geladen und sind schon eingetragen.
 - Die Felder sind Zahlenfelder. Mit den Pfeiltasten springst du in der eingestellten Schrittweite: 1, 0,5 oder 0,1 (bei „100 Point“: 1, 5 oder 10).
 - Der Durchschnitt aller bewerteten Kategorien (leere oder 0 zählen nicht mit) wird oben ins Score-Feld eingetragen.
+- Das Score-Feld oben springt mit den Pfeiltasten ebenfalls in deiner Schrittweite (1, 0,5 oder 0,1). Seanimes eigenes Score-Feld kann nur ganze Schritte, deshalb ersetzt das Plugin es im Fenster durch ein eigenes Feld an derselben Stelle.
 - Klickst du auf Seanimes „Save“, wird der Durchschnitt als Score gespeichert und die Kategorie-Werte landen ebenfalls auf AniList.
 - Änderst du keine Kategorie, bleibt der Score so, wie du ihn eingegeben hast.
 
