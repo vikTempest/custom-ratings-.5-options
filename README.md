@@ -21,6 +21,8 @@ Sprachen: Deutsch, English, Español, Português, 日本語
 
 Ist der Titel noch nicht auf deiner Liste, wird er beim Speichern als „Planning“ hinzugefügt.
 
+**AniList-Limit:** AniList erlaubt nur eine begrenzte Zahl an Anfragen pro Minute, die sich das Plugin mit Seanime teilt. Das Plugin merkt sich deshalb deine Kontoeinstellungen (30 Minuten) und deine Einträge (10 Minuten) und fragt AniList nicht bei jedem Öffnen neu. Wenn du nur den Score änderst, schickt es keine zusätzliche Anfrage.
+
 ## Einstellungen
 
 In Seanime unter **Extensions → AniList Custom Ratings → Preferences**:

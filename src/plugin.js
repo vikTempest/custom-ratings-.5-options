@@ -39,15 +39,20 @@ function init() {
 
     $app.onPostUpdateEntry((e) => {
         try {
+            // The entry changed, so the cached copy is out of date
+            $store.set("acr:entry:" + e.mediaId, { time: 0 })
+
             const key = "acr:pending:" + e.mediaId
             const pending = $store.get(key)
             const fresh = pending && pending.time && (Date.now() - pending.time) < 30 * 60 * 1000
             if (fresh) {
                 $store.set(key, { time: 0 })
+            }
+            // Only the score changed: the pre update hook already saved it, no extra request needed
+            if (fresh && pending.advancedScores && pending.advancedScores.length) {
                 const token = $database.anilist.getToken()
                 if (token) {
-                    const variables = { mediaId: e.mediaId }
-                    if (Array.isArray(pending.advancedScores)) variables.advancedScores = pending.advancedScores
+                    const variables = { mediaId: e.mediaId, advancedScores: pending.advancedScores }
                     if (pending.scoreRaw !== null && pending.scoreRaw !== undefined) variables.scoreRaw = pending.scoreRaw
                     $anilist.customQuery({
                         query: "mutation ($mediaId: Int, $advancedScores: [Float], $scoreRaw: Int) { SaveMediaListEntry(mediaId: $mediaId, advancedScores: $advancedScores, scoreRaw: $scoreRaw) { id } }",
@@ -391,7 +396,6 @@ function init() {
         }
 
         // Scale detection per media type, cached for the session
-        const factorCache = {}
 
         // -----------------------------------------------------------------------------------------
         // Helpers
@@ -414,6 +418,56 @@ function init() {
             const token = getToken()
             if (!token) throw new Error(t("notLoggedIn"))
             return plain($anilist.customQuery(body, token))
+        }
+
+        // AniList only allows a limited number of requests per minute, shared with Seanime itself.
+        // So the plugin remembers your account settings and entries for a while instead of asking
+        // AniList every time a window opens.
+        const VIEWER_TTL = 30 * 60 * 1000
+        const ENTRY_TTL = 10 * 60 * 1000
+
+        function cached(key, ttl) {
+            const c = $store.get(key)
+            if (c && c.time && (Date.now() - c.time) < ttl) return c
+            return null
+        }
+
+        function getViewer() {
+            const token = getToken()
+            if (!token) throw new Error(t("notLoggedIn"))
+            const account = token.slice(-16)
+            const c = cached("acr:viewer", VIEWER_TTL)
+            if (c && c.account === account && c.viewer) return plain(c.viewer)
+            const viewer = (query({ query: QUERY_VIEWER }) || {}).Viewer
+            if (!viewer) throw new Error(t("accountFailed"))
+            $store.set("acr:viewer", { time: Date.now(), account: account, viewer: viewer })
+            return viewer
+        }
+
+        function forgetViewer() {
+            $store.set("acr:viewer", { time: 0 })
+        }
+
+        // Your list entry for a title, or null when it is not on your list
+        function getEntry(mediaId, userId) {
+            const key = "acr:entry:" + mediaId
+            const c = cached(key, ENTRY_TTL)
+            if (c && c.userId === userId) return c.entry ? plain(c.entry) : null
+            let entry = null
+            try {
+                const res = query({ query: QUERY_ENTRY, variables: { mediaId: mediaId, userId: userId } })
+                entry = (res && res.MediaList) || null
+            }
+            catch (e) {
+                // AniList answers with "Not Found." when the media is not on the user's list
+                if (!/not found/i.test(errMsg(e))) throw e
+            }
+            $store.set(key, { time: Date.now(), userId: userId, entry: entry })
+            return entry
+        }
+
+        function forgetEntry(mediaId) {
+            $store.set("acr:entry:" + mediaId, { time: 0 })
         }
 
         function errMsg(e) {
@@ -498,7 +552,8 @@ function init() {
             const cacheKey = type + ":" + scoreFormat
             let values = numbersOf(entryAdv).filter((n) => n > 0)
             if (!values.length) {
-                if (factorCache[cacheKey]) return factorCache[cacheKey]
+                const known = $store.get("acr:factor:" + userId + ":" + cacheKey)
+                if (known) return known
                 try {
                     const res = query({ query: QUERY_RECENT_SCORES, variables: { userId: userId, type: type } })
                     const entries = (res && res.Page && res.Page.mediaList) || []
@@ -512,7 +567,7 @@ function init() {
             }
             let factor = 1
             if (values.length && values.some((n) => n > sc.max)) factor = 100 / sc.max
-            if (values.length) factorCache[cacheKey] = factor
+            if (values.length) $store.set("acr:factor:" + userId + ":" + cacheKey, factor)
             return factor
         }
 
@@ -597,8 +652,7 @@ function init() {
             s.error = ""
             modal.update()
             try {
-                const viewer = (query({ query: QUERY_VIEWER }) || {}).Viewer
-                if (!viewer) throw new Error(t("accountFailed"))
+                const viewer = getViewer()
                 s.userId = viewer.id
                 const opts = viewer.mediaListOptions || {}
                 const listOpts = (s.media.type === "MANGA" ? opts.mangaList : opts.animeList) || {}
@@ -611,28 +665,21 @@ function init() {
                 s.entryExists = false
                 s.entryScore = 0
                 let adv = null
-                try {
-                    const res = query({ query: QUERY_ENTRY, variables: { mediaId: s.media.id, userId: s.userId } })
-                    const entry = res && res.MediaList
-                    if (entry) {
-                        s.entryExists = true
-                        s.entryScore = Number(entry.score) || 0
-                        s.hidden = !!entry.hiddenFromStatusLists
-                        s.selected = parseEntryCustomLists(entry.customLists)
-                        adv = entry.advancedScores
-                        if (typeof adv === "string") {
-                            try {
-                                adv = JSON.parse(adv)
-                            }
-                            catch (e) {
-                                adv = null
-                            }
+                const entry = getEntry(s.media.id, s.userId)
+                if (entry) {
+                    s.entryExists = true
+                    s.entryScore = Number(entry.score) || 0
+                    s.hidden = !!entry.hiddenFromStatusLists
+                    s.selected = parseEntryCustomLists(entry.customLists)
+                    adv = entry.advancedScores
+                    if (typeof adv === "string") {
+                        try {
+                            adv = JSON.parse(adv)
+                        }
+                        catch (e) {
+                            adv = null
                         }
                     }
-                }
-                catch (e) {
-                    // AniList answers with "Not Found." when the media is not on the user's list
-                    if (!/not found/i.test(errMsg(e))) throw e
                 }
 
                 if (s.mode === "rating") {
@@ -671,6 +718,7 @@ function init() {
                 const variables = { mediaId: s.media.id, score: score, advancedScores: advancedScores }
                 if (!s.entryExists) variables.status = "PLANNING"
                 const res = query({ query: MUTATION_SAVE_SCORES, variables: variables })
+                forgetEntry(s.media.id)
                 const entry = res && res.SaveMediaListEntry
                 if (entry) {
                     s.entryExists = true
@@ -698,6 +746,7 @@ function init() {
                 const variables = { mediaId: s.media.id, customLists: names, hidden: s.hidden }
                 if (!s.entryExists) variables.status = "PLANNING"
                 const res = query({ query: MUTATION_SAVE_LISTS, variables: variables })
+                forgetEntry(s.media.id)
                 const entry = res && res.SaveMediaListEntry
                 if (entry) {
                     s.entryExists = true
@@ -731,6 +780,7 @@ function init() {
                     query: s.media.type === "MANGA" ? MUTATION_MANGA_LISTS : MUTATION_ANIME_LISTS,
                     variables: { lists: lists },
                 })
+                forgetViewer()
                 s.lists = lists
                 s.selected[name] = true
                 s.newListName = ""
@@ -1180,8 +1230,7 @@ function init() {
         }
 
         function loadEditor(media) {
-            const viewer = (query({ query: QUERY_VIEWER }) || {}).Viewer
-            if (!viewer) throw new Error(t("accountFailed"))
+            const viewer = getViewer()
             const opts = viewer.mediaListOptions || {}
             const listOpts = (media.type === "MANGA" ? opts.mangaList : opts.animeList) || {}
             const scoreFormat = opts.scoreFormat || "POINT_100"
@@ -1196,14 +1245,15 @@ function init() {
                 return
             }
 
-            let adv = null
-            try {
-                const res = query({ query: QUERY_ENTRY, variables: { mediaId: media.id, userId: viewer.id } })
-                adv = res && res.MediaList && res.MediaList.advancedScores
-                if (typeof adv === "string") adv = JSON.parse(adv)
-            }
-            catch (e) {
-                if (!/not found/i.test(errMsg(e))) throw e
+            const entry = getEntry(media.id, viewer.id)
+            let adv = entry && entry.advancedScores
+            if (typeof adv === "string") {
+                try {
+                    adv = JSON.parse(adv)
+                }
+                catch (e) {
+                    adv = null
+                }
             }
 
             const factor = detectStoredFactor(adv, scoreFormat, media.type, viewer.id)
