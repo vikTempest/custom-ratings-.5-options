@@ -118,6 +118,15 @@ function init() {
                 setupDone: "Categories set up: {0}",
                 setupFailed: "Could not set up categories: {0}",
                 setupEmpty: "Please enter at least one category.",
+                trayTitle: "AniList Custom Ratings",
+                trayHowTo: "Rate with the \"Rate\" button on an anime or manga page, or with the edit button (pencil) on a card: your categories appear below the normal fields.",
+                trayLoggedIn: "Logged in to AniList as {0}.",
+                trayNotLoggedIn: "Not logged in to AniList. Log in to AniList in Seanime first, then the plugin works.",
+                trayCats: "{0} categories: {1}",
+                trayNoCats: "{0}: no categories yet.",
+                traySetupAnime: "Set up for anime",
+                traySetupManga: "Set up for manga",
+                trayRefresh: "Refresh",
             },
             de: {
                 anime: "Anime", manga: "Manga",
@@ -164,6 +173,15 @@ function init() {
                 setupDone: "Kategorien eingerichtet: {0}",
                 setupFailed: "Kategorien konnten nicht eingerichtet werden: {0}",
                 setupEmpty: "Bitte gib mindestens eine Kategorie ein.",
+                trayTitle: "AniList Custom Ratings",
+                trayHowTo: "Bewerten kannst du mit dem Button „Bewerten“ auf einer Anime- oder Manga-Seite oder mit dem Bearbeiten-Button (Stift) auf einer Karte: Deine Kategorien erscheinen dort unter den normalen Feldern.",
+                trayLoggedIn: "Bei AniList angemeldet als {0}.",
+                trayNotLoggedIn: "Nicht bei AniList angemeldet. Melde dich zuerst in Seanime bei AniList an, dann funktioniert das Plugin.",
+                trayCats: "{0}-Kategorien: {1}",
+                trayNoCats: "{0}: noch keine Kategorien.",
+                traySetupAnime: "Für Anime einrichten",
+                traySetupManga: "Für Manga einrichten",
+                trayRefresh: "Aktualisieren",
             },
             es: {
                 anime: "anime", manga: "manga",
@@ -210,6 +228,15 @@ function init() {
                 setupDone: "Categorías configuradas: {0}",
                 setupFailed: "No se pudieron configurar las categorías: {0}",
                 setupEmpty: "Escribe al menos una categoría.",
+                trayTitle: "AniList Custom Ratings",
+                trayHowTo: "Califica con el botón \"Calificar\" en la página de un anime o manga, o con el botón de editar (lápiz) en una tarjeta: tus categorías aparecen debajo de los campos normales.",
+                trayLoggedIn: "Sesión de AniList iniciada como {0}.",
+                trayNotLoggedIn: "No has iniciado sesión en AniList. Inicia sesión en AniList dentro de Seanime y el plugin funcionará.",
+                trayCats: "Categorías de {0}: {1}",
+                trayNoCats: "{0}: aún no hay categorías.",
+                traySetupAnime: "Configurar para anime",
+                traySetupManga: "Configurar para manga",
+                trayRefresh: "Actualizar",
             },
             pt: {
                 anime: "anime", manga: "mangá",
@@ -256,6 +283,15 @@ function init() {
                 setupDone: "Categorias configuradas: {0}",
                 setupFailed: "Não foi possível configurar as categorias: {0}",
                 setupEmpty: "Digite pelo menos uma categoria.",
+                trayTitle: "AniList Custom Ratings",
+                trayHowTo: "Avalie com o botão \"Avaliar\" na página de um anime ou mangá, ou com o botão de editar (lápis) em um card: suas categorias aparecem abaixo dos campos normais.",
+                trayLoggedIn: "Conectado ao AniList como {0}.",
+                trayNotLoggedIn: "Você não está conectado ao AniList. Entre no AniList pelo Seanime e o plugin vai funcionar.",
+                trayCats: "Categorias de {0}: {1}",
+                trayNoCats: "{0}: ainda sem categorias.",
+                traySetupAnime: "Configurar para anime",
+                traySetupManga: "Configurar para mangá",
+                trayRefresh: "Atualizar",
             },
             ja: {
                 anime: "アニメ", manga: "マンガ",
@@ -302,6 +338,15 @@ function init() {
                 setupDone: "カテゴリーを設定しました：{0}",
                 setupFailed: "カテゴリーを設定できませんでした：{0}",
                 setupEmpty: "カテゴリーを1つ以上入力してください。",
+                trayTitle: "AniList Custom Ratings",
+                trayHowTo: "アニメ・マンガのページの「評価する」ボタン、またはカードの編集ボタン（鉛筆）から評価できます。カテゴリーは通常の項目の下に表示されます。",
+                trayLoggedIn: "AniListに{0}としてログインしています。",
+                trayNotLoggedIn: "AniListにログインしていません。まずSeanimeでAniListにログインしてください。",
+                trayCats: "{0}のカテゴリー：{1}",
+                trayNoCats: "{0}：カテゴリーはまだありません。",
+                traySetupAnime: "アニメ用に設定",
+                traySetupManga: "マンガ用に設定",
+                trayRefresh: "更新",
             },
         }
 
@@ -331,6 +376,7 @@ function init() {
         const QUERY_VIEWER = `query {
   Viewer {
     id
+    name
     mediaListOptions {
       scoreFormat
       animeList { customLists advancedScoring advancedScoringEnabled }
@@ -1648,5 +1694,126 @@ function init() {
 
         addButtons("ANIME")
         addButtons("MANGA")
+
+        // -----------------------------------------------------------------------------------------
+        // Tray icon: shows that the plugin is running, how to use it and whether your account is ready
+
+        const tray = ctx.newTray({
+            iconUrl: "https://raw.githubusercontent.com/vikTempest/custom-ratings-.5-options/main/icon.png",
+            tooltipText: t("trayTitle"),
+            withContent: true,
+            width: "24rem",
+        })
+
+        const trayState = {
+            loading: false,
+            error: "",
+            name: "",
+            loggedIn: true,
+            anime: [],
+            manga: [],
+            setupNames: "",
+            saving: false,
+        }
+
+        function loadTray(force) {
+            trayState.loading = true
+            trayState.error = ""
+            tray.update()
+            try {
+                if (!getToken()) {
+                    trayState.loggedIn = false
+                }
+                else {
+                    trayState.loggedIn = true
+                    if (force) forgetViewer()
+                    const viewer = getViewer()
+                    const opts = viewer.mediaListOptions || {}
+                    trayState.name = viewer.name || ""
+                    trayState.anime = ((opts.animeList && opts.animeList.advancedScoring) || []).filter((n) => !!n)
+                    trayState.manga = ((opts.mangaList && opts.mangaList.advancedScoring) || []).filter((n) => !!n)
+                }
+            }
+            catch (e) {
+                trayState.error = errMsg(e)
+            }
+            trayState.loading = false
+            tray.update()
+        }
+
+        function traySetup(type) {
+            if (trayState.saving) return
+            trayState.saving = true
+            tray.update()
+            try {
+                const names = setupCategories(type, trayState.setupNames || t("setupDefault"))
+                ctx.toast.success(t("setupDone", names.join(", ")))
+                trayState.saving = false
+                loadTray(false)
+                return
+            }
+            catch (e) {
+                ctx.toast.error(t("setupFailed", errMsg(e)))
+            }
+            trayState.saving = false
+            tray.update()
+        }
+
+        tray.onOpen(() => loadTray(false))
+
+        tray.render(() => {
+            const items = [
+                tray.text(t("trayTitle"), { className: "font-semibold text-lg" }),
+                tray.text(t("trayHowTo"), { className: "text-sm text-[--muted]" }),
+            ]
+            if (trayState.loading) {
+                items.push(tray.text(t("loading"), { className: "text-sm" }))
+                return tray.stack(items, { gap: 3 })
+            }
+            if (!trayState.loggedIn) {
+                items.push(tray.alert({ title: t("trayNotLoggedIn"), intent: "warning" }))
+                return tray.stack(items, { gap: 3 })
+            }
+            if (trayState.error) {
+                items.push(tray.alert({ title: t("error"), description: trayState.error, intent: "alert" }))
+            }
+            else {
+                if (trayState.name) items.push(tray.text(t("trayLoggedIn", trayState.name), { className: "text-sm" }))
+                const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1)
+                items.push(tray.text(cap(trayState.anime.length ? t("trayCats", t("anime"), trayState.anime.join(", ")) : t("trayNoCats", t("anime"))), { className: "text-sm" }))
+                items.push(tray.text(cap(trayState.manga.length ? t("trayCats", t("manga"), trayState.manga.join(", ")) : t("trayNoCats", t("manga"))), { className: "text-sm" }))
+
+                if (!trayState.anime.length || !trayState.manga.length) {
+                    if (!trayState.setupNames) trayState.setupNames = t("setupDefault")
+                    items.push(tray.input({
+                        value: trayState.setupNames,
+                        disabled: trayState.saving,
+                        onChange: ctx.eventHandler("acr-tray-setup-names", (e) => {
+                            trayState.setupNames = (e && e.value) || ""
+                        }),
+                    }))
+                    const buttons = []
+                    if (!trayState.anime.length) buttons.push(tray.button(t("traySetupAnime"), {
+                        intent: "primary-subtle",
+                        size: "sm",
+                        loading: trayState.saving,
+                        onClick: ctx.eventHandler("acr-tray-setup-anime", () => traySetup("ANIME")),
+                    }))
+                    if (!trayState.manga.length) buttons.push(tray.button(t("traySetupManga"), {
+                        intent: "primary-subtle",
+                        size: "sm",
+                        loading: trayState.saving,
+                        onClick: ctx.eventHandler("acr-tray-setup-manga", () => traySetup("MANGA")),
+                    }))
+                    items.push(tray.flex(buttons, { gap: 2 }))
+                }
+            }
+            items.push(tray.button(t("trayRefresh"), {
+                intent: "gray-subtle",
+                size: "sm",
+                onClick: ctx.eventHandler("acr-tray-refresh", () => loadTray(true)),
+            }))
+            return tray.stack(items, { gap: 3 })
+        })
     })
 }

@@ -17,6 +17,8 @@ Sprachen: Deutsch, English, Español, Português, 日本語
 
 **Bewerten / Rate:** Der Button auf Anime- und Manga-Seiten (und im Rechtsklick-Menü der Karten) öffnet dieselbe Bewertung in einem eigenen Fenster, mit zusätzlichen −/+ Buttons.
 
+**Symbol oben in der Leiste:** Das Plugin hat ein eigenes Symbol (blauer Stern) in Seanimes Plugin-Leiste. Dort siehst du, ob du bei AniList angemeldet bist, welche Kategorien eingerichtet sind, und kannst fehlende Kategorien direkt einrichten.
+
 **Custom Lists:** Häkchen setzen, in welchen Custom Lists der Titel steht, ihn optional aus den Status-Listen ausblenden und neue Custom Lists anlegen.
 
 Ist der Titel noch nicht auf deiner Liste, wird er beim Speichern als „Planning“ hinzugefügt.
