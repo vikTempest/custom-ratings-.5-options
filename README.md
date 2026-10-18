@@ -32,10 +32,9 @@ In Seanime unter **Extensions → AniList Custom Ratings → Preferences**:
 
 ## Voraussetzungen auf AniList
 
-Unter anilist.co → Settings → Lists:
+Du musst Advanced Scoring nicht selbst einrichten. Hast du noch keine Bewertungskategorien, zeigt das Plugin beim ersten Öffnen ein Feld, in das du deine Kategorien mit Komma getrennt einträgst (Vorschlag: Story, Charaktere, Animation, Musik, Spaß). Mit „Kategorien einrichten“ legt das Plugin sie auf deinem AniList-Konto an und schaltet Advanced Scoring ein (für Anime und Manga getrennt). Ändern kannst du sie später auf anilist.co unter Settings → Lists.
 
-- **Advanced Scoring** aktivieren und deine Kategorien anlegen (für Anime und Manga getrennt)
-- Für Schritte von 0,5 und 0,1 brauchst du das Scoring System **10 Point Decimal**
+Für Schritte von 0,5 und 0,1 brauchst du auf anilist.co (Settings → Lists) das Scoring System **10 Point Decimal**.
 
 ## Installation
 
@@ -52,6 +51,8 @@ Danach das Plugin aktivieren und die Berechtigungen bestätigen (AniList-Zugriff
 1. Seanime schließen.
 2. `anilist-custom-lists.json` in den Ordner `%APPDATA%\Seanime\extensions` kopieren (eine ältere Version mit demselben Namen einfach ersetzen).
 3. Seanime starten, unter **Extensions** das Plugin aktivieren und die Berechtigungen bestätigen.
+
+Zeigt Seanime „extension ID is already in use“, liegt das Plugin doppelt im Ordner `%APPDATA%\Seanime\extensions` (zum Beispiel als `anilist-custom-lists (1).json` nach einem zweiten Download). Lösche alle Kopien bis auf `anilist-custom-lists.json` und starte Seanime neu.
 
 ## Dateien
 

@@ -111,6 +111,13 @@ function init() {
                 editorNotFound: "Could not detect this title. Use the \"Rate\" button on its page instead.",
                 editorLoading: "Loading your categories…",
                 editorNoCategories: "No rating categories set up. On anilist.co go to Settings → Lists → Advanced Scoring.",
+                setupTitle: "Set up your rating categories",
+                setupDesc: "You don't have any categories yet. Enter them separated by commas and the plugin sets them up on your AniList account for your {0} list (Advanced Scoring is turned on for you).",
+                setupDefault: "Story, Characters, Animation, Music, Enjoyment",
+                setupButton: "Set up categories",
+                setupDone: "Categories set up: {0}",
+                setupFailed: "Could not set up categories: {0}",
+                setupEmpty: "Please enter at least one category.",
             },
             de: {
                 anime: "Anime", manga: "Manga",
@@ -150,6 +157,13 @@ function init() {
                 editorNotFound: "Titel konnte nicht erkannt werden. Nutze stattdessen den Button \"Bewerten\" auf seiner Seite.",
                 editorLoading: "Lade deine Kategorien…",
                 editorNoCategories: "Keine Bewertungskategorien eingerichtet. Auf anilist.co unter Settings → Lists → Advanced Scoring.",
+                setupTitle: "Bewertungskategorien einrichten",
+                setupDesc: "Du hast noch keine Kategorien. Gib sie mit Komma getrennt ein, dann richtet das Plugin sie auf deinem AniList-Konto für deine {0}-Liste ein (Advanced Scoring wird dabei eingeschaltet).",
+                setupDefault: "Story, Charaktere, Animation, Musik, Spaß",
+                setupButton: "Kategorien einrichten",
+                setupDone: "Kategorien eingerichtet: {0}",
+                setupFailed: "Kategorien konnten nicht eingerichtet werden: {0}",
+                setupEmpty: "Bitte gib mindestens eine Kategorie ein.",
             },
             es: {
                 anime: "anime", manga: "manga",
@@ -189,6 +203,13 @@ function init() {
                 editorNotFound: "No se pudo detectar este título. Usa el botón \"Calificar\" en su página.",
                 editorLoading: "Cargando tus categorías…",
                 editorNoCategories: "No hay categorías configuradas. En anilist.co ve a Settings → Lists → Advanced Scoring.",
+                setupTitle: "Configura tus categorías de calificación",
+                setupDesc: "Aún no tienes categorías. Escríbelas separadas por comas y el plugin las configurará en tu cuenta de AniList para tu lista de {0} (Advanced Scoring se activa automáticamente).",
+                setupDefault: "Historia, Personajes, Animación, Música, Disfrute",
+                setupButton: "Configurar categorías",
+                setupDone: "Categorías configuradas: {0}",
+                setupFailed: "No se pudieron configurar las categorías: {0}",
+                setupEmpty: "Escribe al menos una categoría.",
             },
             pt: {
                 anime: "anime", manga: "mangá",
@@ -228,6 +249,13 @@ function init() {
                 editorNotFound: "Não foi possível detectar este título. Use o botão \"Avaliar\" na página dele.",
                 editorLoading: "Carregando suas categorias…",
                 editorNoCategories: "Nenhuma categoria configurada. No anilist.co vá em Settings → Lists → Advanced Scoring.",
+                setupTitle: "Configure suas categorias de avaliação",
+                setupDesc: "Você ainda não tem categorias. Digite-as separadas por vírgula e o plugin as configura na sua conta do AniList para a sua lista de {0} (o Advanced Scoring é ativado automaticamente).",
+                setupDefault: "História, Personagens, Animação, Música, Diversão",
+                setupButton: "Configurar categorias",
+                setupDone: "Categorias configuradas: {0}",
+                setupFailed: "Não foi possível configurar as categorias: {0}",
+                setupEmpty: "Digite pelo menos uma categoria.",
             },
             ja: {
                 anime: "アニメ", manga: "マンガ",
@@ -267,6 +295,13 @@ function init() {
                 editorNotFound: "この作品を判別できませんでした。作品ページの「評価する」ボタンを使ってください。",
                 editorLoading: "カテゴリーを読み込んでいます…",
                 editorNoCategories: "評価カテゴリーがありません。anilist.co の Settings → Lists → Advanced Scoring で設定してください。",
+                setupTitle: "評価カテゴリーを設定する",
+                setupDesc: "まだカテゴリーがありません。カンマ区切りで入力すると、プラグインがAniListアカウントの{0}リストに設定します（Advanced Scoringも自動で有効になります）。",
+                setupDefault: "ストーリー, キャラクター, 作画, 音楽, 楽しさ",
+                setupButton: "カテゴリーを設定",
+                setupDone: "カテゴリーを設定しました：{0}",
+                setupFailed: "カテゴリーを設定できませんでした：{0}",
+                setupEmpty: "カテゴリーを1つ以上入力してください。",
             },
         }
 
@@ -348,6 +383,14 @@ function init() {
   UpdateUser(mangaListOptions: { customLists: $lists }) { id }
 }`
 
+        const MUTATION_SETUP_ANIME = `mutation ($names: [String]) {
+  UpdateUser(animeListOptions: { advancedScoring: $names, advancedScoringEnabled: true }) { id }
+}`
+
+        const MUTATION_SETUP_MANGA = `mutation ($names: [String]) {
+  UpdateUser(mangaListOptions: { advancedScoring: $names, advancedScoringEnabled: true }) { id }
+}`
+
         // -----------------------------------------------------------------------------------------
         // Score scales
 
@@ -382,6 +425,7 @@ function init() {
             entryExists: false,
             entryScore: 0,
             newListName: "",
+            setupNames: "",
         }
 
         const modal = ctx.newModal({ title: "AniList" })
@@ -809,6 +853,46 @@ function init() {
         }
 
         // -----------------------------------------------------------------------------------------
+        // First-time setup: create the rating categories on AniList for users who have none yet
+
+        function parseCategoryNames(text) {
+            const out = []
+            const parts = String(text || "").split(/[,;\n、，]/)
+            for (let i = 0; i < parts.length; i++) {
+                const name = parts[i].trim().slice(0, 40)
+                if (name && !out.some((n) => n.toLowerCase() === name.toLowerCase())) out.push(name)
+            }
+            return out.slice(0, MAX_CATEGORIES)
+        }
+
+        // Sets up the categories on AniList; returns the names or throws
+        function setupCategories(type, text) {
+            const names = parseCategoryNames(text)
+            if (!names.length) throw new Error(t("setupEmpty"))
+            query({ query: type === "MANGA" ? MUTATION_SETUP_MANGA : MUTATION_SETUP_ANIME, variables: { names: names } })
+            forgetViewer()
+            return names
+        }
+
+        function runSetupInModal() {
+            if (s.saving || !s.media) return
+            s.saving = true
+            modal.update()
+            try {
+                const names = setupCategories(s.media.type, s.setupNames || t("setupDefault"))
+                ctx.toast.success(t("setupDone", names.join(", ")))
+                s.saving = false
+                load()
+                return
+            }
+            catch (e) {
+                ctx.toast.error(t("setupFailed", errMsg(e)))
+            }
+            s.saving = false
+            modal.update()
+        }
+
+        // -----------------------------------------------------------------------------------------
         // Rendering
 
         function renderRating(items, key, kind) {
@@ -819,11 +903,32 @@ function init() {
             }
 
             if (!s.categories.length) {
+                if (!s.setupNames) s.setupNames = t("setupDefault")
                 items.push(modal.alert({
-                    title: t("noCategoriesTitle"),
-                    description: t("noCategoriesDesc", kind),
+                    title: t("setupTitle"),
+                    description: t("setupDesc", kind),
                     intent: "info",
                 }))
+                items.push(modal.input({
+                    value: s.setupNames,
+                    disabled: s.saving,
+                    onChange: ctx.eventHandler("acr-setup-names-" + key, (e) => {
+                        s.setupNames = (e && e.value) || ""
+                    }),
+                    className: "w-full",
+                }))
+                items.push(modal.flex([
+                    modal.button(t("cancel"), {
+                        intent: "gray-subtle",
+                        onClick: ctx.eventHandler("acr-cancel", () => modal.close()),
+                    }),
+                    modal.button(t("setupButton"), {
+                        intent: "primary",
+                        loading: s.saving,
+                        disabled: s.saving,
+                        onClick: ctx.eventHandler("acr-setup-" + key, () => runSetupInModal()),
+                    }),
+                ], { gap: 2, className: "justify-end" }))
                 return
             }
 
@@ -988,6 +1093,7 @@ function init() {
             scoreFormat: "",
             categories: [],
             storedFactor: 1,
+            setupMedia: null,   // title the setup form is shown for
         }
 
         const EDITOR_HTML = `<!DOCTYPE html>
@@ -1010,6 +1116,8 @@ function init() {
   input.bad { border-color: #ef4444; }
   .foot { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 12px; align-items: baseline; }
   .avg { font-weight: 600; }
+  .btn { flex: none; height: 40px; padding: 0 14px; border-radius: 8px; border: 0; background: #6366f1; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  .btn:disabled { opacity: 0.6; cursor: default; }
 </style>
 </head>
 <body>
@@ -1143,6 +1251,34 @@ function init() {
     showMessage(data && data.text ? data.text : "");
   });
 
+  webview.on("setup", function (data) {
+    var root = document.getElementById("root");
+    root.innerHTML = "";
+    root.appendChild(el("div", "title", data.title));
+    var desc = el("div", "muted", data.desc);
+    desc.style.margin = "6px 0 10px 0";
+    root.appendChild(desc);
+    var row = el("div", "setup");
+    row.style.display = "flex";
+    row.style.gap = "8px";
+    var input = el("input");
+    input.type = "text";
+    input.value = data.value || "";
+    var btn = el("button", "btn", data.button);
+    btn.addEventListener("click", function () {
+      btn.disabled = true;
+      webview.send("setupSave", { names: input.value });
+    });
+    row.appendChild(input);
+    row.appendChild(btn);
+    root.appendChild(row);
+  });
+
+  webview.on("setupFailed", function () {
+    var b = document.querySelector("button.btn");
+    if (b) b.disabled = false;
+  });
+
   webview.on("init", function (data) {
     state = data;
     state.dirty = false;
@@ -1241,7 +1377,13 @@ function init() {
             updateScoreStep()
 
             if (!categories.length) {
-                editorStatus(t("editorNoCategories"))
+                editor.setupMedia = media
+                editorView.channel.send("setup", {
+                    title: t("setupTitle"),
+                    desc: t("setupDesc", kindOf(media.type)),
+                    value: t("setupDefault"),
+                    button: t("setupButton"),
+                })
                 return
             }
 
@@ -1305,6 +1447,20 @@ function init() {
                     }
                 })
                 .catch((e) => editorStatus(t("error") + ": " + errMsg(e)))
+        })
+
+        editorView.channel.on("setupSave", (payload) => {
+            const media = editor.setupMedia
+            if (!media) return
+            try {
+                const names = setupCategories(media.type, payload && payload.names)
+                ctx.toast.success(t("setupDone", names.join(", ")))
+                loadEditor(media)
+            }
+            catch (e) {
+                ctx.toast.error(t("setupFailed", errMsg(e)))
+                editorView.channel.send("setupFailed", {})
+            }
         })
 
         editorView.channel.on("step", (payload) => {
